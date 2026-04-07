@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#0b1020">
-  <title>Anime MBTI Test</title>
+  <title>Anime MBTI</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Sora:wght@500;700;800&display=swap" rel="stylesheet">
@@ -16,48 +16,159 @@
   <div class="background-glow background-glow--bottom"></div>
 
   <main class="app-shell">
-    <section class="screen is-visible" id="start-screen">
-      <div class="start-shell">
-        <div class="start-topbar">
-          <div class="status-pill" id="network-status">Online</div>
+    <section class="screen is-visible" id="welcome-screen">
+      <div class="welcome-shell">
+        <div class="hero-scene" aria-hidden="true">
+          <div class="hero-scene__moon"></div>
+          <div class="hero-scene__halo"></div>
+          <div class="hero-scene__cloud hero-scene__cloud--left"></div>
+          <div class="hero-scene__cloud hero-scene__cloud--right"></div>
+          <div class="hero-scene__spark hero-scene__spark--one"></div>
+          <div class="hero-scene__spark hero-scene__spark--two"></div>
+          <div class="hero-scene__spark hero-scene__spark--three"></div>
+          <div class="hero-scene__silhouette"></div>
+          <div class="hero-scene__floor"></div>
         </div>
 
-        <div class="mode-stage">
-          <div class="start-copy">
-            <h1>Anime MBTI Test</h1>
-            <p class="start-subtitle">Choose your depth</p>
-          </div>
-
-          <div class="aura-row" id="aura-row" role="tablist" aria-label="Test modes"></div>
-
-          <div class="mode-focus-panel" id="mode-focus-panel">
-            <div class="mode-focus-head">
-              <div>
-                <h2 id="selected-mode-name">Medium</h2>
-                <p class="mode-focus-meta" id="selected-mode-meta">40 questions - 4-6 min</p>
-              </div>
-            </div>
-            <p class="mode-focus-description" id="selected-mode-description">
-              A balanced read with more nuance and a stronger character match.
-            </p>
-            <p class="mode-focus-note" id="selected-mode-note"></p>
-          </div>
-
-          <button class="primary-button mode-cta" id="mode-cta-button" type="button">Open Medium Depth</button>
+        <div class="welcome-copy">
+          <p class="eyebrow" id="welcome-badge">Anime MBTI</p>
+          <h1 id="welcome-title">Узнай свой аниме-тип</h1>
+          <p class="welcome-text" id="welcome-subtitle">
+            Пройди атмосферный тест и почувствуй, какой характер, ритм и персонаж ближе всего к тебе.
+          </p>
         </div>
+
+        <button class="primary-button primary-button--hero" id="welcome-cta-button" type="button">Пройти тест</button>
       </div>
     </section>
 
-    <section class="screen" id="test-screen">
-      <div class="glass-card test-card">
-        <div class="test-topbar">
-          <button class="ghost-button" id="back-button" type="button">Back</button>
-          <div class="sync-chip" id="sync-chip">Local cache active</div>
+    <section class="screen" id="hub-screen">
+      <div class="app-frame">
+        <header class="app-header">
+          <div>
+            <p class="eyebrow" id="view-eyebrow">Тест</p>
+            <h2 id="view-title">Выбери глубину</h2>
+          </div>
+          <div class="status-pill" id="network-status">Онлайн</div>
+        </header>
+
+        <div class="app-views">
+          <section class="app-view is-active" id="test-view" data-view="test">
+            <div class="mode-stage">
+              <div class="test-lead">
+                <p class="screen-lead">Один короткий выбор, один чистый фокус и путь к своему результату.</p>
+              </div>
+
+              <div class="aura-row" id="aura-row" role="tablist" aria-label="Режимы теста"></div>
+
+              <div class="mode-focus-panel" id="mode-focus-panel">
+                <div class="mode-focus-head">
+                  <div>
+                    <h3 id="selected-mode-name">Стандартный</h3>
+                    <p class="mode-focus-meta" id="selected-mode-meta">40 вопросов - 4-6 минут</p>
+                  </div>
+                </div>
+                <p class="mode-focus-description" id="selected-mode-description">
+                  Сбалансированный режим, который раскрывает характер чуть глубже и даёт более устойчивый результат.
+                </p>
+                <p class="mode-focus-note hidden" id="selected-mode-note"></p>
+              </div>
+
+              <button class="primary-button mode-cta" id="mode-cta-button" type="button">Начать тест</button>
+            </div>
+          </section>
+
+          <section class="app-view" id="types-view" data-view="types">
+            <div class="view-copy">
+              <p class="screen-lead">Все 16 типов личности в одном месте: коротко, ясно и без перегруза.</p>
+            </div>
+            <div class="types-grid" id="types-grid"></div>
+          </section>
+
+          <section class="app-view" id="profile-view" data-view="profile">
+            <article class="profile-hero">
+              <img class="profile-avatar" id="profile-avatar" alt="Фото профиля">
+              <div class="profile-identity">
+                <h3 id="profile-name">Загрузка...</h3>
+                <p id="profile-username">@anime_mbti</p>
+                <p id="profile-telegram-id">ID Telegram: —</p>
+              </div>
+            </article>
+
+            <div class="profile-grid">
+              <article class="profile-card">
+                <div class="card-head">
+                  <h3>Последний результат</h3>
+                </div>
+                <div class="profile-result">
+                  <div class="result-type-chip" id="profile-last-result-type">—</div>
+                  <p class="profile-card__title" id="profile-last-result-name">Пока нет результата</p>
+                  <p class="profile-card__text" id="profile-last-result-summary">Пройди тест, чтобы сохранить свой тип и аниме-персонажа.</p>
+                  <p class="profile-card__meta" id="profile-last-result-date">Ещё не проходил</p>
+                </div>
+              </article>
+
+              <article class="profile-card">
+                <div class="card-head">
+                  <h3>Текущий тип</h3>
+                </div>
+                <div class="profile-current-type">
+                  <div class="current-type-code" id="profile-current-type-code">—</div>
+                  <p class="profile-card__title" id="profile-current-type-name">Тип пока не определён</p>
+                  <p class="profile-card__text" id="profile-current-type-description">После завершения теста здесь появится твой основной профиль.</p>
+                </div>
+              </article>
+
+              <article class="profile-card">
+                <div class="card-head">
+                  <h3>Статистика</h3>
+                </div>
+                <div class="stats-grid">
+                  <div class="stat-item">
+                    <span class="stat-value" id="profile-tests-count">0</span>
+                    <span class="stat-label">Тестов пройдено</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-value" id="profile-last-mode">—</span>
+                    <span class="stat-label">Последний режим</span>
+                  </div>
+                </div>
+              </article>
+
+              <article class="profile-card">
+                <div class="card-head">
+                  <h3>История тестов</h3>
+                </div>
+                <div class="history-list profile-history-list" id="profile-history-list"></div>
+              </article>
+
+              <article class="profile-card profile-card--wide">
+                <div class="card-head">
+                  <h3 id="profile-about-title">О приложении</h3>
+                </div>
+                <p class="profile-card__text" id="profile-about-text"></p>
+                <div class="profile-actions">
+                  <button class="secondary-button" id="profile-restart-button" type="button">Пройти заново</button>
+                </div>
+              </article>
+            </div>
+          </section>
         </div>
 
-        <div class="test-meta">
-          <div class="mode-badge" id="mode-badge">Quick</div>
-          <div class="question-counter" id="question-counter">Question 1 of 24</div>
+        <nav class="tabbar" id="tabbar" aria-label="Основная навигация"></nav>
+      </div>
+    </section>
+
+    <section class="screen" id="question-screen">
+      <div class="glass-card question-card">
+        <div class="question-topbar">
+          <button class="ghost-button" id="back-button" type="button">Назад</button>
+          <div class="sync-chip" id="sync-chip">Прогресс сохранён</div>
+        </div>
+
+        <div class="question-meta">
+          <div class="mode-badge" id="mode-badge">Быстрый</div>
+          <div class="question-counter" id="question-counter">Вопрос 1 из 24</div>
         </div>
 
         <div class="progress-block">
@@ -66,19 +177,19 @@
           </div>
         </div>
 
-        <div class="question-badge" id="question-type-badge">Scale E / I</div>
-        <h2 class="question-text" id="question-text">Loading question...</h2>
+        <div class="question-badge" id="question-type-badge">Экстраверсия и интроверсия</div>
+        <h2 class="question-text" id="question-text">Загрузка вопроса...</h2>
 
         <div class="scale-legend">
-          <span>Disagree</span>
-          <span>Neutral</span>
-          <span>Agree</span>
+          <span>Не согласен</span>
+          <span>Нейтрально</span>
+          <span>Согласен</span>
         </div>
 
-        <div class="answer-scale" id="answer-scale" role="radiogroup" aria-label="Answer scale"></div>
-        <p class="answer-hint" id="answer-hint">Choose one option to continue.</p>
+        <div class="answer-scale" id="answer-scale" role="radiogroup" aria-label="Шкала ответа"></div>
+        <p class="answer-hint" id="answer-hint">Выбери один вариант, чтобы продолжить.</p>
 
-        <button class="primary-button" id="next-button" type="button" disabled>Next</button>
+        <button class="primary-button" id="next-button" type="button" disabled>Далее</button>
       </div>
     </section>
 
@@ -86,28 +197,28 @@
       <div class="glass-card result-card">
         <div class="result-head">
           <div>
-            <p class="eyebrow">Your Result</p>
+            <p class="eyebrow">Твой результат</p>
             <div class="result-type" id="result-type">ENTP</div>
-            <div class="result-type-name" id="result-type-name">Debater</div>
+            <div class="result-type-name" id="result-type-name">Полемист</div>
           </div>
-          <div class="mode-badge" id="result-mode-badge">Medium</div>
+          <div class="mode-badge" id="result-mode-badge">Стандартный</div>
         </div>
 
         <p class="result-description" id="result-type-description">
-          Type overview and overall personality vibe.
+          Описание типа личности появится после завершения теста.
         </p>
         <p class="result-summary" id="result-summary">
-          Server-generated result summary.
+          Серверная сводка результата или локальный резервный расчёт.
         </p>
 
         <article class="character-feature">
-          <img class="character-feature-image" id="main-character-image" alt="Main character">
+          <img class="character-feature-image" id="main-character-image" alt="Главный персонаж">
           <div class="character-feature-content">
-            <div class="character-tag">Main Character</div>
+            <div class="character-tag">Главный персонаж</div>
             <h2 id="main-character-name">Gojo Satoru</h2>
             <p class="character-anime" id="main-character-anime">Jujutsu Kaisen</p>
             <p class="character-description" id="main-character-description">
-              Character description.
+              Описание персонажа появится после завершения теста.
             </p>
             <div class="trait-list" id="main-character-traits"></div>
           </div>
@@ -116,46 +227,79 @@
         <div class="result-grid">
           <div class="result-section">
             <div class="section-head">
-              <h3>Similar Characters</h3>
-              <p>Three more matches for your type</p>
+              <h3>Похожие персонажи</h3>
+              <p>Три близких совпадения по типу</p>
             </div>
             <div class="similar-grid" id="similar-characters"></div>
           </div>
 
           <div class="result-section">
             <div class="section-head">
-              <h3>Percentages</h3>
-              <p>Server calculation with local fallback</p>
+              <h3>Проценты по шкалам</h3>
+              <p>Баланс по всем четырём осям MBTI</p>
             </div>
             <div class="score-list" id="score-list"></div>
           </div>
         </div>
 
         <div class="result-actions">
-          <button class="primary-button" id="share-button" type="button">Share</button>
-          <button class="secondary-button" id="history-button" type="button">History</button>
-          <button class="ghost-button" id="restart-button" type="button">Start Again</button>
+          <button class="primary-button" id="share-button" type="button">Поделиться</button>
+          <button class="secondary-button" id="result-profile-button" type="button">В профиль</button>
+          <button class="ghost-button" id="restart-button" type="button">Пройти заново</button>
         </div>
 
         <p class="share-feedback" id="share-feedback" aria-live="polite"></p>
       </div>
     </section>
+
+    <section class="screen" id="type-detail-screen">
+      <div class="glass-card detail-card">
+        <div class="detail-topbar">
+          <button class="ghost-button" id="close-type-detail-button" type="button">Назад</button>
+          <div class="status-pill" id="detail-type-code">INTJ</div>
+        </div>
+
+        <div class="detail-head">
+          <div>
+            <p class="eyebrow">Тип личности</p>
+            <h2 id="detail-type-name">Стратег</h2>
+          </div>
+          <p class="detail-description" id="detail-type-description">
+            Подробное описание типа появится здесь.
+          </p>
+        </div>
+
+        <div class="detail-grid">
+          <article class="detail-block">
+            <h3>Сильные стороны</h3>
+            <div class="detail-tags" id="detail-strengths"></div>
+          </article>
+
+          <article class="detail-block">
+            <h3>Слабые стороны</h3>
+            <div class="detail-tags" id="detail-weaknesses"></div>
+          </article>
+
+          <article class="detail-block detail-block--wide">
+            <h3>В общении</h3>
+            <p id="detail-communication"></p>
+          </article>
+
+          <article class="detail-block detail-block--wide">
+            <h3>В отношениях</h3>
+            <p id="detail-relationships"></p>
+          </article>
+
+          <article class="detail-block detail-block--wide">
+            <h3>В работе и учёбе</h3>
+            <p id="detail-work"></p>
+          </article>
+        </div>
+      </div>
+    </section>
   </main>
 
-  <div class="modal hidden" id="history-modal" aria-hidden="true">
-    <div class="modal-backdrop" id="history-close-backdrop"></div>
-    <div class="modal-card glass-card">
-      <div class="modal-head">
-        <div>
-          <p class="eyebrow">History</p>
-          <h2>Past sessions</h2>
-        </div>
-        <button class="ghost-button" id="close-history-button" type="button">Close</button>
-      </div>
-      <div class="history-list" id="history-list"></div>
-    </div>
-  </div>
-
+  <script defer src="app-data.js"></script>
   <script defer src="questions.js"></script>
   <script defer src="characters.js"></script>
   <script defer src="api.js"></script>

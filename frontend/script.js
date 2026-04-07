@@ -1,9 +1,10 @@
 (() => {
+  const uiData = window.APP_UI_DATA;
   const questionData = window.APP_QUESTION_DATA;
   const characterData = window.APP_CHARACTER_DATA;
   const api = window.AnimeMbtiApi;
 
-  if (!questionData || !characterData || !api) {
+  if (!uiData || !questionData || !characterData || !api) {
     return;
   }
 
@@ -16,20 +17,29 @@
 
   const state = {
     user: null,
-    mode: null,
+    activeView: "test",
     selectedMode: "medium",
+    selectedTypeCode: "INTJ",
+    mode: null,
     questions: [],
     session: null,
     resumeSession: null,
     result: null,
     latestResult: null,
-    history: [],
-    historyLoaded: false
+    history: []
   };
 
   const elements = {
     screens: document.querySelectorAll(".screen"),
+    welcomeBadge: document.getElementById("welcome-badge"),
+    welcomeTitle: document.getElementById("welcome-title"),
+    welcomeSubtitle: document.getElementById("welcome-subtitle"),
+    welcomeCtaButton: document.getElementById("welcome-cta-button"),
+    viewEyebrow: document.getElementById("view-eyebrow"),
+    viewTitle: document.getElementById("view-title"),
     networkStatus: document.getElementById("network-status"),
+    tabbar: document.getElementById("tabbar"),
+    appViews: document.querySelectorAll(".app-view"),
     auraRow: document.getElementById("aura-row"),
     modeFocusPanel: document.getElementById("mode-focus-panel"),
     selectedModeName: document.getElementById("selected-mode-name"),
@@ -37,6 +47,24 @@
     selectedModeDescription: document.getElementById("selected-mode-description"),
     selectedModeNote: document.getElementById("selected-mode-note"),
     modeCtaButton: document.getElementById("mode-cta-button"),
+    typesGrid: document.getElementById("types-grid"),
+    profileAvatar: document.getElementById("profile-avatar"),
+    profileName: document.getElementById("profile-name"),
+    profileUsername: document.getElementById("profile-username"),
+    profileTelegramId: document.getElementById("profile-telegram-id"),
+    profileLastResultType: document.getElementById("profile-last-result-type"),
+    profileLastResultName: document.getElementById("profile-last-result-name"),
+    profileLastResultSummary: document.getElementById("profile-last-result-summary"),
+    profileLastResultDate: document.getElementById("profile-last-result-date"),
+    profileCurrentTypeCode: document.getElementById("profile-current-type-code"),
+    profileCurrentTypeName: document.getElementById("profile-current-type-name"),
+    profileCurrentTypeDescription: document.getElementById("profile-current-type-description"),
+    profileTestsCount: document.getElementById("profile-tests-count"),
+    profileLastMode: document.getElementById("profile-last-mode"),
+    profileHistoryList: document.getElementById("profile-history-list"),
+    profileAboutTitle: document.getElementById("profile-about-title"),
+    profileAboutText: document.getElementById("profile-about-text"),
+    profileRestartButton: document.getElementById("profile-restart-button"),
     backButton: document.getElementById("back-button"),
     syncChip: document.getElementById("sync-chip"),
     modeBadge: document.getElementById("mode-badge"),
@@ -60,13 +88,18 @@
     similarCharacters: document.getElementById("similar-characters"),
     scoreList: document.getElementById("score-list"),
     shareButton: document.getElementById("share-button"),
-    historyButton: document.getElementById("history-button"),
+    resultProfileButton: document.getElementById("result-profile-button"),
     restartButton: document.getElementById("restart-button"),
     shareFeedback: document.getElementById("share-feedback"),
-    historyModal: document.getElementById("history-modal"),
-    historyList: document.getElementById("history-list"),
-    closeHistoryButton: document.getElementById("close-history-button"),
-    historyCloseBackdrop: document.getElementById("history-close-backdrop")
+    closeTypeDetailButton: document.getElementById("close-type-detail-button"),
+    detailTypeCode: document.getElementById("detail-type-code"),
+    detailTypeName: document.getElementById("detail-type-name"),
+    detailTypeDescription: document.getElementById("detail-type-description"),
+    detailStrengths: document.getElementById("detail-strengths"),
+    detailWeaknesses: document.getElementById("detail-weaknesses"),
+    detailCommunication: document.getElementById("detail-communication"),
+    detailRelationships: document.getElementById("detail-relationships"),
+    detailWork: document.getElementById("detail-work")
   };
 
   createAnswerButtons();
@@ -74,16 +107,39 @@
   initializeApp();
 
   async function initializeApp() {
+    applyWelcomeCopy();
+    renderTabbar();
     setNetworkStatus();
+
     state.user = initTelegram();
+    elements.profileAboutTitle.textContent = uiData.profile.aboutTitle;
+    elements.profileAboutText.textContent = `${uiData.profile.aboutText} ${uiData.profile.settingsText}`;
 
     await api.upsertUser(state.user);
     await api.syncPendingSession(state.user);
 
-    state.resumeSession = await api.getActiveSession(state.user.telegramId);
-    state.latestResult = await api.getLatestResult(state.user.telegramId);
+    const [resumeSession, latestResultRaw, historyRaw] = await Promise.all([
+      api.getActiveSession(state.user.telegramId),
+      api.getLatestResult(state.user.telegramId),
+      api.getHistory(state.user.telegramId)
+    ]);
+
+    state.resumeSession = resumeSession;
+    state.latestResult = normalizeResult(latestResultRaw);
+    state.history = Array.isArray(historyRaw)
+      ? historyRaw.map((entry) => normalizeResult(entry, entry.mode)).filter(Boolean)
+      : [];
+
     hydrateSelectedMode();
-    renderStartState();
+    hydrateSelectedType();
+    renderApp();
+  }
+
+  function applyWelcomeCopy() {
+    elements.welcomeBadge.textContent = uiData.welcome.badge;
+    elements.welcomeTitle.textContent = uiData.welcome.title;
+    elements.welcomeSubtitle.textContent = uiData.welcome.subtitle;
+    elements.welcomeCtaButton.textContent = uiData.welcome.ctaLabel;
   }
 
   function initTelegram() {
@@ -99,29 +155,45 @@
       return {
         telegramId: String(telegramUser.id),
         username: telegramUser.username || null,
-        firstName: telegramUser.first_name || "Telegram User",
-        lastName: telegramUser.last_name || null
+        firstName: telegramUser.first_name || "Пользователь Telegram",
+        lastName: telegramUser.last_name || null,
+        photoUrl: telegramUser.photo_url || null
       };
     }
 
     return {
       telegramId: "local-demo-user",
-      username: "local_demo",
-      firstName: "Local",
-      lastName: "Tester"
+      username: "anime_mbti_demo",
+      firstName: "Локальный",
+      lastName: "пользователь",
+      photoUrl: null
     };
   }
 
   function bindEvents() {
+    elements.welcomeCtaButton.addEventListener("click", () => {
+      state.activeView = "test";
+      showScreen("hub-screen");
+      renderApp();
+    });
+
+    elements.tabbar.addEventListener("click", handleTabClick);
     elements.auraRow.addEventListener("click", handleAuraSelection);
     elements.modeCtaButton.addEventListener("click", handleModeCta);
+    elements.profileRestartButton.addEventListener("click", goToTestHub);
     elements.backButton.addEventListener("click", handleBack);
     elements.nextButton.addEventListener("click", handleNext);
     elements.shareButton.addEventListener("click", handleShare);
-    elements.historyButton.addEventListener("click", openHistory);
-    elements.restartButton.addEventListener("click", handleRestart);
-    elements.closeHistoryButton.addEventListener("click", closeHistory);
-    elements.historyCloseBackdrop.addEventListener("click", closeHistory);
+    elements.resultProfileButton.addEventListener("click", () => {
+      state.activeView = "profile";
+      showScreen("hub-screen");
+      renderApp();
+    });
+    elements.restartButton.addEventListener("click", goToTestHub);
+    elements.closeTypeDetailButton.addEventListener("click", () => {
+      showScreen("hub-screen");
+      renderApp();
+    });
 
     window.addEventListener("online", handleConnectivityChange);
     window.addEventListener("offline", handleConnectivityChange);
@@ -142,8 +214,17 @@
     }
 
     const synced = await api.syncPendingSession(state.user);
-    state.resumeSession = await api.getActiveSession(state.user.telegramId);
-    state.latestResult = await api.getLatestResult(state.user.telegramId);
+    const [resumeSession, latestResultRaw, historyRaw] = await Promise.all([
+      api.getActiveSession(state.user.telegramId),
+      api.getLatestResult(state.user.telegramId),
+      api.getHistory(state.user.telegramId)
+    ]);
+
+    state.resumeSession = resumeSession;
+    state.latestResult = normalizeResult(latestResultRaw);
+    state.history = Array.isArray(historyRaw)
+      ? historyRaw.map((entry) => normalizeResult(entry, entry.mode)).filter(Boolean)
+      : [];
 
     if (synced?.mbtiType) {
       state.result = normalizeResult(synced);
@@ -152,24 +233,108 @@
     }
 
     hydrateSelectedMode();
-    renderStartState();
-    renderSyncChip();
+    hydrateSelectedType();
+    renderApp();
   }
 
   function hydrateSelectedMode() {
     const availableModes = new Set(questionData.modeOptions.map((mode) => mode.key));
-    const preferredMode = state.resumeSession?.mode || state.selectedMode || state.latestResult?.mode || "medium";
+    const preferredMode = state.resumeSession?.mode || state.latestResult?.mode || state.selectedMode || "medium";
     state.selectedMode = availableModes.has(preferredMode) ? preferredMode : "medium";
   }
 
-  function getModeDetails(modeKey = state.selectedMode) {
-    return questionData.modeOptions.find((mode) => mode.key === modeKey) || questionData.modeOptions[0];
+  function hydrateSelectedType() {
+    const preferredType = state.latestResult?.type || state.selectedTypeCode || "INTJ";
+    state.selectedTypeCode = characterData.typeProfiles[preferredType] ? preferredType : "INTJ";
   }
 
-  function renderStartState() {
+  function renderApp() {
+    renderHeader();
+    renderTabbar();
+    renderAppViews();
+    renderTestView();
+    renderTypesView();
+    renderProfileView();
+    renderSyncChip();
+  }
+
+  function renderHeader() {
+    const viewTitle = uiData.viewTitles[state.activeView];
+    elements.viewEyebrow.textContent = viewTitle.eyebrow;
+    elements.viewTitle.textContent = viewTitle.title;
+  }
+
+  function renderTabbar() {
+    elements.tabbar.innerHTML = "";
+
+    uiData.tabs.forEach((tab) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "tabbar-button";
+      button.dataset.view = tab.key;
+      button.setAttribute("aria-label", tab.label);
+      button.innerHTML = `
+        <span class="tabbar-icon" aria-hidden="true">${renderTabIcon(tab.icon)}</span>
+        <span class="tabbar-label">${tab.label}</span>
+      `;
+
+      if (tab.key === state.activeView) {
+        button.classList.add("is-active");
+      }
+
+      elements.tabbar.appendChild(button);
+    });
+  }
+
+  function renderTabIcon(icon) {
+    if (icon === "spark") {
+      return `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3l1.6 4.1L18 8.7l-4.4 1.6L12 14.5l-1.6-4.2L6 8.7l4.4-1.6L12 3z"></path>
+        </svg>
+      `;
+    }
+
+    if (icon === "grid") {
+      return `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4" y="4" width="6" height="6" rx="1.5"></rect>
+          <rect x="14" y="4" width="6" height="6" rx="1.5"></rect>
+          <rect x="4" y="14" width="6" height="6" rx="1.5"></rect>
+          <rect x="14" y="14" width="6" height="6" rx="1.5"></rect>
+        </svg>
+      `;
+    }
+
+    return `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 21a8 8 0 10-16 0"></path>
+        <circle cx="12" cy="8" r="4"></circle>
+      </svg>
+    `;
+  }
+
+  function renderAppViews() {
+    elements.appViews.forEach((view) => {
+      view.classList.toggle("is-active", view.dataset.view === state.activeView);
+    });
+  }
+
+  function handleTabClick(event) {
+    const trigger = event.target.closest("[data-view]");
+
+    if (!trigger) {
+      return;
+    }
+
+    state.activeView = trigger.dataset.view;
+    showScreen("hub-screen");
+    renderApp();
+  }
+
+  function renderTestView() {
     renderAuraModes();
     renderModeFocus();
-    renderSyncChip();
   }
 
   function renderAuraModes() {
@@ -199,9 +364,7 @@
   function renderModeFocus() {
     const selectedMode = getModeDetails();
     const hasResumeForSelected = state.resumeSession?.mode === selectedMode.key;
-    const resumeLabel = state.resumeSession
-      ? getModeDetails(state.resumeSession.mode)?.title || state.resumeSession.mode
-      : null;
+    const resumeMode = state.resumeSession ? getModeDetails(state.resumeSession.mode) : null;
 
     elements.selectedModeName.textContent = selectedMode.title;
     elements.selectedModeMeta.textContent = `${selectedMode.subtitle} - ${selectedMode.duration}`;
@@ -210,18 +373,22 @@
     elements.modeCtaButton.dataset.accent = selectedMode.accent;
 
     if (hasResumeForSelected) {
-      elements.selectedModeNote.textContent = `Resume from question ${state.resumeSession.currentQuestionIndex + 1} of ${state.resumeSession.totalQuestions}.`;
+      elements.selectedModeNote.textContent = `Есть незавершённая сессия: вопрос ${state.resumeSession.currentQuestionIndex + 1} из ${state.resumeSession.totalQuestions}.`;
       elements.selectedModeNote.classList.remove("hidden");
-      elements.modeCtaButton.textContent = `Continue ${selectedMode.title} Depth`;
-    } else if (state.resumeSession) {
-      elements.selectedModeNote.textContent = `An unfinished ${resumeLabel} session is saved. Starting here will replace it.`;
-      elements.selectedModeNote.classList.remove("hidden");
-      elements.modeCtaButton.textContent = selectedMode.ctaLabel;
-    } else {
-      elements.selectedModeNote.textContent = "";
-      elements.selectedModeNote.classList.add("hidden");
-      elements.modeCtaButton.textContent = selectedMode.ctaLabel;
+      elements.modeCtaButton.textContent = "Продолжить тест";
+      return;
     }
+
+    if (state.resumeSession && resumeMode) {
+      elements.selectedModeNote.textContent = `Сохранён незавершённый режим «${resumeMode.title}». Если начнёшь новый, текущий прогресс заменится.`;
+      elements.selectedModeNote.classList.remove("hidden");
+      elements.modeCtaButton.textContent = selectedMode.ctaLabel;
+      return;
+    }
+
+    elements.selectedModeNote.textContent = "";
+    elements.selectedModeNote.classList.add("hidden");
+    elements.modeCtaButton.textContent = selectedMode.ctaLabel;
   }
 
   function handleAuraSelection(event) {
@@ -232,7 +399,7 @@
     }
 
     state.selectedMode = trigger.dataset.mode;
-    renderStartState();
+    renderTestView();
   }
 
   async function handleModeCta() {
@@ -244,6 +411,132 @@
     }
 
     await startMode(selectedMode.key);
+  }
+
+  function renderTypesView() {
+    elements.typesGrid.innerHTML = "";
+
+    Object.values(characterData.typeProfiles).forEach((profile) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "type-card";
+      button.dataset.typeCode = profile.code;
+      button.innerHTML = `
+        <span class="type-card__code">${profile.code}</span>
+        <span class="type-card__name">${profile.name}</span>
+        <span class="type-card__text">${profile.summary}</span>
+      `;
+      button.addEventListener("click", () => openTypeDetail(profile.code));
+      elements.typesGrid.appendChild(button);
+    });
+  }
+
+  function openTypeDetail(typeCode) {
+    state.selectedTypeCode = typeCode;
+    renderTypeDetail();
+    showScreen("type-detail-screen");
+  }
+
+  function renderTypeDetail() {
+    const profile = getTypeProfile(state.selectedTypeCode);
+
+    if (!profile) {
+      return;
+    }
+
+    elements.detailTypeCode.textContent = profile.code;
+    elements.detailTypeName.textContent = profile.name;
+    elements.detailTypeDescription.textContent = profile.description;
+    renderTagGroup(elements.detailStrengths, profile.strengths);
+    renderTagGroup(elements.detailWeaknesses, profile.weaknesses);
+    elements.detailCommunication.textContent = profile.communication;
+    elements.detailRelationships.textContent = profile.relationships;
+    elements.detailWork.textContent = profile.workStudy;
+  }
+
+  function renderTagGroup(container, items) {
+    container.innerHTML = "";
+
+    items.forEach((item) => {
+      const tag = document.createElement("span");
+      tag.className = "detail-tag";
+      tag.textContent = item;
+      container.appendChild(tag);
+    });
+  }
+
+  function renderProfileView() {
+    const displayName = getUserDisplayName();
+    const latestResult = state.latestResult;
+    const currentTypeProfile = latestResult ? getTypeProfile(latestResult.type) : null;
+
+    elements.profileAvatar.src = getUserAvatar();
+    elements.profileName.textContent = displayName;
+    elements.profileUsername.textContent = state.user.username ? `@${state.user.username}` : uiData.emptyStates.username;
+    elements.profileTelegramId.textContent = `ID Telegram: ${state.user.telegramId}`;
+
+    if (latestResult) {
+      elements.profileLastResultType.textContent = latestResult.type;
+      elements.profileLastResultName.textContent = `${latestResult.typeProfile.name} — ${latestResult.mainCharacter?.name || "аниме-архетип"}`;
+      elements.profileLastResultSummary.textContent = latestResult.summaryText;
+      elements.profileLastResultDate.textContent = `Последний раз: ${formatDate(latestResult.createdAt)}`;
+      elements.profileCurrentTypeCode.textContent = latestResult.type;
+      elements.profileCurrentTypeName.textContent = latestResult.typeProfile.name;
+      elements.profileCurrentTypeDescription.textContent = currentTypeProfile?.summary || latestResult.typeProfile.description;
+    } else {
+      elements.profileLastResultType.textContent = "—";
+      elements.profileLastResultName.textContent = uiData.emptyStates.latestResult;
+      elements.profileLastResultSummary.textContent = "После прохождения здесь появится твой тип и главный персонаж.";
+      elements.profileLastResultDate.textContent = "Ещё не проходил";
+      elements.profileCurrentTypeCode.textContent = "—";
+      elements.profileCurrentTypeName.textContent = uiData.emptyStates.currentType;
+      elements.profileCurrentTypeDescription.textContent = "Сначала заверши тест, чтобы увидеть свой профиль личности.";
+    }
+
+    elements.profileTestsCount.textContent = String(state.history.length);
+    elements.profileLastMode.textContent = latestResult ? getModeDetails(latestResult.mode).title : "—";
+
+    renderProfileHistory();
+  }
+
+  function renderProfileHistory() {
+    elements.profileHistoryList.innerHTML = "";
+
+    if (!state.history.length) {
+      const empty = document.createElement("article");
+      empty.className = "history-item";
+      empty.innerHTML = `<p>${uiData.emptyStates.history}</p>`;
+      elements.profileHistoryList.appendChild(empty);
+      return;
+    }
+
+    state.history.slice(0, 5).forEach((entry) => {
+      const historyCard = document.createElement("article");
+      historyCard.className = "history-item";
+      historyCard.innerHTML = `
+        <div class="history-top">
+          <strong>${entry.type} — ${entry.typeProfile.name}</strong>
+          <span class="history-meta">${formatDate(entry.createdAt)}</span>
+        </div>
+        <div class="history-body">
+          <img class="history-avatar" src="${entry.mainCharacter?.iconUrl || getFallbackAvatar("MB")}" alt="${entry.mainCharacter?.name || "Персонаж"}">
+          <div>
+            <h3>${entry.mainCharacter?.name || "Аниме-архетип"}</h3>
+            <p>${getModeDetails(entry.mode).title} режим</p>
+            <p>${entry.summaryText}</p>
+          </div>
+        </div>
+      `;
+      elements.profileHistoryList.appendChild(historyCard);
+    });
+  }
+
+  function goToTestHub() {
+    state.result = null;
+    state.activeView = "test";
+    state.selectedMode = state.latestResult?.mode || state.resumeSession?.mode || state.selectedMode;
+    showScreen("hub-screen");
+    renderApp();
   }
 
   function createAnswerButtons() {
@@ -265,7 +558,7 @@
 
   async function startMode(mode, replaceExisting = false) {
     if (state.resumeSession && !replaceExisting) {
-      const shouldReplace = window.confirm("You already have an unfinished session. Start a new one and replace the saved progress?");
+      const shouldReplace = window.confirm("У тебя уже есть незавершённая сессия. Начать новый тест и заменить сохранённый прогресс?");
 
       if (!shouldReplace) {
         return;
@@ -288,7 +581,7 @@
     state.resumeSession = state.session;
     state.result = null;
 
-    showScreen("test-screen");
+    showScreen("question-screen");
     renderQuestion();
   }
 
@@ -302,7 +595,7 @@
     state.selectedMode = state.resumeSession.mode;
     state.questions = bundle.questions;
     state.session = ensureSessionShape(state.resumeSession, bundle.totalQuestions);
-    showScreen("test-screen");
+    showScreen("question-screen");
     renderQuestion();
   }
 
@@ -360,9 +653,9 @@
 
     if (state.session.currentQuestionIndex === 0) {
       state.resumeSession = state.session;
-      state.selectedMode = state.session.mode;
-      renderStartState();
-      showScreen("start-screen");
+      state.activeView = "test";
+      showScreen("hub-screen");
+      renderApp();
       return;
     }
 
@@ -376,12 +669,14 @@
   async function finishSession() {
     const provisionalResult = await buildLocalResult();
     const payload = await api.completeSession(state.session, provisionalResult);
+    const normalized = normalizeResult(payload, state.mode);
 
-    state.result = normalizeResult(payload, state.mode);
-    state.latestResult = state.result;
+    state.result = normalized;
+    state.latestResult = normalized;
+    state.history = [normalized, ...state.history.filter((entry) => entry.sessionId !== normalized.sessionId)];
     state.resumeSession = null;
     state.session = null;
-    state.selectedMode = state.result.mode;
+    state.selectedTypeCode = normalized.type;
     renderResult();
     showScreen("result-screen");
   }
@@ -416,10 +711,7 @@
 
     const type = scales.map((scale) => scale.dominantSide).join("");
     const characterPackage = await api.getCharactersByType(type);
-    const typeProfile = characterPackage.typeProfile || {
-      code: type,
-      ...characterData.typeDetails[type]
-    };
+    const typeProfile = getTypeProfile(type);
 
     return {
       type,
@@ -427,10 +719,10 @@
       mode: state.mode,
       createdAt: new Date().toISOString(),
       sessionId: state.session.id,
-      summaryText: `${type} - ${typeProfile.name}. ${typeProfile.description}`,
+      summaryText: `Твой тип — ${type}. ${typeProfile.description}`,
       scales,
-      mainCharacter: characterPackage.main,
-      similarCharacters: characterPackage.others
+      mainCharacter: characterPackage.main || getCharacterGroup(type)?.main || null,
+      similarCharacters: characterPackage.others || getCharacterGroup(type)?.others || []
     };
   }
 
@@ -440,10 +732,12 @@
     }
 
     const type = payload.mbtiType || payload.type;
-    const typeProfile = payload.typeProfile || payload.profile || {
-      code: type,
-      ...characterData.typeDetails[type]
-    };
+    if (!type) {
+      return null;
+    }
+
+    const typeProfile = payload.typeProfile || payload.profile || getTypeProfile(type);
+    const characterGroup = getCharacterGroup(type);
     const scales = payload.scales || payload.calculation?.scales || buildScalesFromPercentages(payload.percentages);
 
     return {
@@ -452,10 +746,10 @@
       type,
       typeProfile,
       mode: payload.mode || fallbackMode || payload.session?.mode || "quick",
-      summaryText: payload.summaryText || payload.calculation?.summaryText || `${type} - ${typeProfile.name}. ${typeProfile.description}`,
+      summaryText: payload.summaryText || payload.calculation?.summaryText || `Твой тип — ${type}. ${typeProfile.description}`,
       scales,
-      mainCharacter: payload.mainCharacter || null,
-      similarCharacters: payload.similarCharacters || payload.others || [],
+      mainCharacter: payload.mainCharacter || characterGroup?.main || null,
+      similarCharacters: payload.similarCharacters || payload.others || characterGroup?.others || [],
       createdAt: payload.createdAt || new Date().toISOString()
     };
   }
@@ -491,15 +785,15 @@
     const answer = state.session.answers[index];
     const progress = ((index + 1) / state.questions.length) * 100;
 
-    elements.modeBadge.textContent = getModeDetails(state.mode)?.title || state.mode;
-    elements.questionCounter.textContent = `Question ${index + 1} of ${state.questions.length}`;
+    elements.modeBadge.textContent = getModeDetails(state.mode).title;
+    elements.questionCounter.textContent = `Вопрос ${index + 1} из ${state.questions.length}`;
     elements.progressFill.style.width = `${progress}%`;
     elements.questionTypeBadge.textContent = questionData.scaleLabels[question.scaleType];
     elements.questionText.textContent = question.text;
     elements.answerHint.textContent = typeof answer === "number"
-      ? questionData.answerOptions.find((option) => option.value === answer)?.label || "Answer saved"
-      : "Choose one option to continue.";
-    elements.nextButton.textContent = index === state.questions.length - 1 ? "Show Result" : "Next";
+      ? questionData.answerOptions.find((option) => option.value === answer)?.label || "Ответ сохранён"
+      : "Выбери один вариант, чтобы продолжить.";
+    elements.nextButton.textContent = index === state.questions.length - 1 ? "Показать результат" : "Далее";
     elements.nextButton.disabled = typeof answer !== "number";
     syncAnswerButtons(answer);
     renderSyncChip();
@@ -519,18 +813,18 @@
     }
 
     const result = state.result;
-    const modeLabel = getModeDetails(result.mode)?.title || result.mode;
+    const modeLabel = getModeDetails(result.mode).title;
     const mainCharacter = result.mainCharacter || {
-      name: "Character loading",
+      name: "Аниме-архетип",
       anime: "Anime MBTI",
-      description: "Character details will appear after synchronization.",
+      description: "Описание персонажа появится после полной синхронизации.",
       imageUrl: "https://placehold.co/720x880/0e162d/f4f7ff?text=Anime+MBTI",
-      traits: ["Pending", "Sync", "Cache"]
+      traits: ["Ожидание", "Синхронизация", "Результат"]
     };
 
     elements.resultType.textContent = result.type;
-    elements.resultTypeName.textContent = result.typeProfile?.name || result.type;
-    elements.resultTypeDescription.textContent = result.typeProfile?.description || "A unique combination of personality traits.";
+    elements.resultTypeName.textContent = result.typeProfile.name;
+    elements.resultTypeDescription.textContent = result.typeProfile.description;
     elements.resultSummary.textContent = result.summaryText;
     elements.resultModeBadge.textContent = modeLabel;
     elements.mainCharacterImage.src = mainCharacter.imageUrl;
@@ -559,7 +853,7 @@
   function renderSimilarCharacters(characters) {
     elements.similarCharacters.innerHTML = "";
 
-    characters.forEach((character) => {
+    characters.slice(0, 3).forEach((character) => {
       const card = document.createElement("article");
       card.className = "similar-card";
       card.innerHTML = `
@@ -596,61 +890,12 @@
     });
   }
 
-  async function openHistory() {
-    if (!state.historyLoaded) {
-      state.history = await api.getHistory(state.user.telegramId);
-      state.historyLoaded = true;
-    }
-
-    renderHistory();
-    elements.historyModal.classList.remove("hidden");
-    elements.historyModal.setAttribute("aria-hidden", "false");
-  }
-
-  function closeHistory() {
-    elements.historyModal.classList.add("hidden");
-    elements.historyModal.setAttribute("aria-hidden", "true");
-  }
-
-  function renderHistory() {
-    elements.historyList.innerHTML = "";
-
-    if (!state.history.length) {
-      const empty = document.createElement("article");
-      empty.className = "history-item";
-      empty.innerHTML = "<p>No history yet. Finish a test to create your first result.</p>";
-      elements.historyList.appendChild(empty);
-      return;
-    }
-
-    state.history.forEach((entry) => {
-      const item = normalizeResult(entry, entry.mode);
-      const historyCard = document.createElement("article");
-      historyCard.className = "history-item";
-      historyCard.innerHTML = `
-        <div class="history-top">
-          <strong>${item.type} - ${item.typeProfile?.name || item.type}</strong>
-          <span class="history-meta">${formatDate(item.createdAt)}</span>
-        </div>
-        <div class="history-body">
-          <img class="history-avatar" src="${item.mainCharacter?.iconUrl || "https://placehold.co/96x96/18233f/eef3ff?text=MB"}" alt="${item.mainCharacter?.name || "Character"}">
-          <div>
-            <h3>${item.mainCharacter?.name || "Main Character"}</h3>
-            <p>${getModeDetails(item.mode)?.title || item.mode} mode</p>
-            <p>${item.summaryText}</p>
-          </div>
-        </div>
-      `;
-      elements.historyList.appendChild(historyCard);
-    });
-  }
-
   async function handleShare() {
     if (!state.result) {
       return;
     }
 
-    const shareText = `I took the Anime MBTI Test! My type is ${state.result.type}, and my character is ${state.result.mainCharacter?.name || "Unknown"}.`;
+    const shareText = `Я прошёл Anime MBTI Test! Мой тип — ${state.result.type}, а мой персонаж — ${state.result.mainCharacter?.name || "неизвестно кто"}.`;
     const shareUrl = `https://t.me/share/url?url=${encodeURIComponent("https://t.me")}&text=${encodeURIComponent(shareText)}`;
 
     try {
@@ -661,27 +906,17 @@
 
       if (navigator.share) {
         await navigator.share({
-          title: "Anime MBTI Test",
+          title: "Anime MBTI",
           text: shareText
         });
         return;
       }
 
       await navigator.clipboard.writeText(shareText);
-      elements.shareFeedback.textContent = "Result text copied to clipboard.";
+      elements.shareFeedback.textContent = "Текст результата скопирован в буфер обмена.";
     } catch (error) {
-      elements.shareFeedback.textContent = "Could not share the result. Please try again.";
+      elements.shareFeedback.textContent = "Не удалось поделиться результатом. Попробуй ещё раз.";
     }
-  }
-
-  function handleRestart() {
-    state.session = null;
-    state.result = null;
-    state.historyLoaded = false;
-    hydrateSelectedMode();
-    renderStartState();
-    showScreen("start-screen");
-    syncRemoteState();
   }
 
   function renderSyncChip() {
@@ -690,18 +925,57 @@
     }
 
     if (!state.session && !state.resumeSession) {
-      elements.syncChip.textContent = navigator.onLine ? "Server connected" : "Offline mode";
+      elements.syncChip.textContent = navigator.onLine ? "Онлайн режим" : "Оффлайн режим";
       return;
     }
 
     const session = state.session || state.resumeSession;
     elements.syncChip.textContent = session?.synced === false
-      ? "Offline: waiting for sync"
-      : "Progress saved to server";
+      ? "Оффлайн: ждём синхронизацию"
+      : "Прогресс сохранён";
+  }
+
+  function getModeDetails(modeKey = state.selectedMode) {
+    return questionData.modeOptions.find((mode) => mode.key === modeKey) || questionData.modeOptions[1];
+  }
+
+  function getTypeProfile(typeCode) {
+    return characterData.typeProfiles[typeCode] || characterData.typeProfiles.INTJ;
+  }
+
+  function getCharacterGroup(typeCode) {
+    return characterData.groups[typeCode] || null;
+  }
+
+  function getUserDisplayName() {
+    const lastName = state.user.lastName ? ` ${state.user.lastName}` : "";
+    return state.user.firstName ? `${state.user.firstName}${lastName}` : "Пользователь Telegram";
+  }
+
+  function getUserAvatar() {
+    if (state.user.photoUrl) {
+      return state.user.photoUrl;
+    }
+
+    return getFallbackAvatar(getUserInitials());
+  }
+
+  function getFallbackAvatar(text) {
+    return `https://placehold.co/160x160/141d37/f4f6ff?text=${encodeURIComponent(text)}`;
+  }
+
+  function getUserInitials() {
+    const source = `${state.user.firstName || ""} ${state.user.lastName || ""}`.trim() || "A";
+    return source
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0].toUpperCase())
+      .join("");
   }
 
   function setNetworkStatus() {
-    elements.networkStatus.textContent = navigator.onLine ? "Online" : "Offline";
+    elements.networkStatus.textContent = navigator.onLine ? "Онлайн" : "Оффлайн";
   }
 
   function showScreen(screenId) {
@@ -715,7 +989,7 @@
   function formatDate(value) {
     const date = new Date(value || Date.now());
 
-    return new Intl.DateTimeFormat("en-US", {
+    return new Intl.DateTimeFormat("ru-RU", {
       day: "2-digit",
       month: "short",
       hour: "2-digit",

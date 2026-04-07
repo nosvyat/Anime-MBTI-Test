@@ -1,54 +1,33 @@
 window.APP_QUESTION_DATA = (() => {
   const modeOrder = { quick: 1, medium: 2, full: 3 };
 
-  const legacyModeOptions = [
-    {
-      key: "quick",
-      title: "Quick",
-      subtitle: "24 вопроса",
-      description: "Быстро узнать базовый MBTI-профиль и своего аниме-двойника."
-    },
-    {
-      key: "medium",
-      title: "Medium",
-      subtitle: "40 вопросов",
-      description: "Чуть глубже раскрыть характер и получить более устойчивый результат."
-    },
-    {
-      key: "full",
-      title: "Full",
-      subtitle: "60 вопросов",
-      description: "Максимально подробный проход с полным балансом по всем шкалам."
-    }
-  ];
-
   const modeOptions = [
     {
       key: "quick",
-      title: "Quick",
-      subtitle: "24 questions",
-      duration: "2-3 min",
+      title: "Быстрый",
+      subtitle: "24 вопроса",
+      duration: "2-3 минуты",
       accent: "blue",
-      description: "A fast pulse read for a sharp type reveal and a quick anime match.",
-      ctaLabel: "Enter Quick Depth"
+      description: "Короткий и бодрый проход, чтобы быстро почувствовать свой базовый MBTI-профиль и аниме-настроение.",
+      ctaLabel: "Начать быстрый тест"
     },
     {
       key: "medium",
-      title: "Medium",
-      subtitle: "40 questions",
-      duration: "4-6 min",
+      title: "Стандартный",
+      subtitle: "40 вопросов",
+      duration: "4-6 минут",
       accent: "violet",
-      description: "A balanced read with more nuance, steadier patterns, and a richer character fit.",
-      ctaLabel: "Open Medium Depth"
+      description: "Сбалансированный режим: больше нюансов, устойчивее результат и глубже ощущение собственного характера.",
+      ctaLabel: "Начать стандартный тест"
     },
     {
       key: "full",
-      title: "Full",
-      subtitle: "60 questions",
-      duration: "8-10 min",
+      title: "Полный",
+      subtitle: "60 вопросов",
+      duration: "8-10 минут",
       accent: "pink",
-      description: "The full aura scan with maximum depth, stronger balance, and the clearest personality silhouette.",
-      ctaLabel: "Unlock Full Depth"
+      description: "Максимальная глубина для тех, кто хочет увидеть себя объёмнее и получить самый точный итоговый портрет.",
+      ctaLabel: "Начать полный тест"
     }
   ];
 
@@ -63,77 +42,117 @@ window.APP_QUESTION_DATA = (() => {
   ];
 
   const scaleLabels = {
-    EI: "Шкала E / I",
-    NS: "Шкала N / S",
-    TF: "Шкала T / F",
-    JP: "Шкала J / P"
+    EI: "Экстраверсия и интроверсия",
+    NS: "Интуиция и сенсорика",
+    TF: "Логика и чувства",
+    JP: "Структура и гибкость"
   };
 
-  const questionBank = [
-    { text: "Мне легче заряжаться энергией в компании людей, чем в одиночестве.", scaleType: "EI", directSide: "E", modeMin: "quick" },
-    { text: "Я часто первым начинаю разговор, даже если никого почти не знаю.", scaleType: "EI", directSide: "E", modeMin: "quick" },
-    { text: "Мне нравится обсуждать идеи вслух, а не держать их только в голове.", scaleType: "EI", directSide: "E", modeMin: "quick" },
-    { text: "Активные встречи и шумные компании обычно меня оживляют.", scaleType: "EI", directSide: "E", modeMin: "quick" },
-    { text: "Если день проходит без общения, я чувствую нехватку энергии.", scaleType: "EI", directSide: "E", modeMin: "quick" },
-    { text: "В группе я обычно говорю больше, чем слушаю.", scaleType: "EI", directSide: "E", modeMin: "quick" },
-    { text: "Я предпочитаю сначала обдумать всё в одиночестве, а потом делиться идеями.", scaleType: "EI", directSide: "I", modeMin: "medium" },
-    { text: "После долгого общения мне часто нужно побыть одному, чтобы восстановиться.", scaleType: "EI", directSide: "I", modeMin: "medium" },
-    { text: "Я чаще наблюдаю, чем активно веду разговор.", scaleType: "EI", directSide: "I", modeMin: "medium" },
-    { text: "Мне комфортнее выражать мысли письменно, чем сразу говорить вслух.", scaleType: "EI", directSide: "I", modeMin: "medium" },
-    { text: "В незнакомой компании я сначала присматриваюсь, а не врываюсь в центр внимания.", scaleType: "EI", directSide: "I", modeMin: "full" },
-    { text: "Один спокойный вечер дома радует меня больше, чем спонтанная вечеринка.", scaleType: "EI", directSide: "I", modeMin: "full" },
-    { text: "Я могу долго работать без внешней стимуляции и не скучать.", scaleType: "EI", directSide: "I", modeMin: "full" },
-    { text: "Мне не нужно много общения, чтобы чувствовать, что день удался.", scaleType: "EI", directSide: "I", modeMin: "full" },
-    { text: "Я раскрываюсь глубже в узком кругу, чем в большой шумной группе.", scaleType: "EI", directSide: "I", modeMin: "full" },
+  const questionSets = {
+    EI: {
+      quick: [
+        { text: "Мне легче заряжаться энергией среди людей, чем в одиночестве.", directSide: "E" },
+        { text: "В новой компании я часто сам начинаю разговор.", directSide: "E" },
+        { text: "После живого общения я обычно чувствую прилив сил.", directSide: "E" },
+        { text: "После насыщенного дня мне важно побыть одному, чтобы восстановиться.", directSide: "I" },
+        { text: "Я предпочитаю сначала всё обдумать внутри себя, а потом говорить.", directSide: "I" },
+        { text: "Мне комфортнее наблюдать, чем сразу выходить в центр внимания.", directSide: "I" }
+      ],
+      medium: [
+        { text: "Мне проще обсуждать идеи вслух, чем держать их только в голове.", directSide: "E" },
+        { text: "Если день прошёл без общения, мне будто чего-то не хватает.", directSide: "E" },
+        { text: "Я раскрываюсь глубже в узком кругу, чем в большой компании.", directSide: "I" },
+        { text: "Я лучше формулирую мысли письменно, чем в спонтанном разговоре.", directSide: "I" }
+      ],
+      full: [
+        { text: "Мне нравится быть тем, кто задаёт тон разговору.", directSide: "E" },
+        { text: "Я быстро знакомлюсь с людьми, если атмосфера живая и открытая.", directSide: "E" },
+        { text: "Тихий вечер дома радует меня больше, чем спонтанная встреча.", directSide: "I" },
+        { text: "В шумной компании я устаю быстрее, чем это заметно со стороны.", directSide: "I" },
+        { text: "Чтобы восстановиться, мне нужно личное пространство без внешнего шума.", directSide: "I" }
+      ]
+    },
+    NS: {
+      quick: [
+        { text: "Меня сильнее вдохновляют возможности, чем готовые факты.", directSide: "N" },
+        { text: "Я часто думаю о том, что может получиться в будущем.", directSide: "N" },
+        { text: "Мне интересно искать скрытый смысл и подтекст.", directSide: "N" },
+        { text: "Я доверяю тому, что можно проверить на практике.", directSide: "S" },
+        { text: "Конкретные детали для меня важнее красивой теории.", directSide: "S" },
+        { text: "Мне проще опираться на реальный опыт, чем на догадки.", directSide: "S" }
+      ],
+      medium: [
+        { text: "Я люблю представлять альтернативные сценарии и новые варианты.", directSide: "N" },
+        { text: "Даже без полной информации я часто чувствую общее направление.", directSide: "N" },
+        { text: "Чёткая инструкция помогает мне больше, чем свободная трактовка.", directSide: "S" },
+        { text: "Мне легче заметить факты и детали, чем символы и намёки.", directSide: "S" }
+      ],
+      full: [
+        { text: "В разговоре я нередко цепляюсь за образы, идеи и ассоциации.", directSide: "N" },
+        { text: "Мне нравится строить идеи, которые выходят за рамки привычного.", directSide: "N" },
+        { text: "Я быстро вижу общую картину, даже если деталей пока мало.", directSide: "N" },
+        { text: "Мне важно понимать, как идею можно применить прямо сейчас.", directSide: "S" },
+        { text: "Я лучше запоминаю то, что можно увидеть, потрогать или повторить.", directSide: "S" }
+      ]
+    },
+    TF: {
+      quick: [
+        { text: "В решениях я чаще ставлю логику выше эмоций.", directSide: "T" },
+        { text: "Мне важно, чтобы выводы были объективными, даже если они жёсткие.", directSide: "T" },
+        { text: "Я спокойно критикую идею, если она не работает.", directSide: "T" },
+        { text: "Я стараюсь учитывать чувства всех участников ситуации.", directSide: "F" },
+        { text: "Даже в споре мне важно сохранить уважение и тепло.", directSide: "F" },
+        { text: "Для меня важно, как решение повлияет на отношения между людьми.", directSide: "F" }
+      ],
+      medium: [
+        { text: "Честность для меня чаще важнее мягкой формулировки.", directSide: "T" },
+        { text: "Я скорее выберу справедливое правило, чем личное исключение.", directSide: "T" },
+        { text: "Я быстро чувствую настроение людей и подстраиваю тон общения.", directSide: "F" },
+        { text: "Иногда поддержка человека важнее идеального решения задачи.", directSide: "F" }
+      ],
+      full: [
+        { text: "В напряжённой ситуации я сначала анализирую, а потом переживаю.", directSide: "T" },
+        { text: "Мне легче отстаивать позицию, если она логически выстроена.", directSide: "T" },
+        { text: "Я улавливаю эмоциональные нюансы даже без слов.", directSide: "F" },
+        { text: "Я предпочитаю мягко вести человека к выводу, а не выдавать вердикт.", directSide: "F" },
+        { text: "Личная лояльность для меня иногда важнее формальной беспристрастности.", directSide: "F" }
+      ]
+    },
+    JP: {
+      quick: [
+        { text: "Мне спокойнее, когда план понятен заранее.", directSide: "J" },
+        { text: "Я люблю завершать задачи до дедлайна.", directSide: "J" },
+        { text: "Списки и структура помогают мне держать ритм.", directSide: "J" },
+        { text: "Мне нравится оставлять место для импровизации.", directSide: "P" },
+        { text: "Спонтанность иногда делает день лучше идеального плана.", directSide: "P" },
+        { text: "Я не люблю фиксировать всё слишком рано.", directSide: "P" }
+      ],
+      medium: [
+        { text: "Неожиданные изменения планов обычно выбивают меня из ритма.", directSide: "J" },
+        { text: "Я предпочитаю принять решение и двигаться дальше, а не держать всё открытым.", directSide: "J" },
+        { text: "Мне легче адаптироваться на ходу, чем следовать жёсткому сценарию.", directSide: "P" },
+        { text: "Открытые варианты вдохновляют меня больше, чем окончательные рамки.", directSide: "P" }
+      ],
+      full: [
+        { text: "Я чувствую облегчение, когда всё разложено по шагам.", directSide: "J" },
+        { text: "Мне важно понимать порядок действий ещё до старта.", directSide: "J" },
+        { text: "Я люблю исследовать варианты до последнего, прежде чем выбрать одно.", directSide: "P" },
+        { text: "Слишком плотный график быстро лишает меня вдохновения.", directSide: "P" },
+        { text: "Лучшие решения иногда приходят, когда сначала пробуешь, а потом структурируешь.", directSide: "P" }
+      ]
+    }
+  };
 
-    { text: "Меня сильнее вдохновляют необычные идеи, чем проверенные факты.", scaleType: "NS", directSide: "N", modeMin: "quick" },
-    { text: "Я часто думаю о том, что может быть, а не только о том, что уже есть.", scaleType: "NS", directSide: "N", modeMin: "quick" },
-    { text: "Мне интереснее искать скрытые смыслы, чем фокусироваться на буквальных деталях.", scaleType: "NS", directSide: "N", modeMin: "quick" },
-    { text: "Я люблю представлять будущее и альтернативные сценарии.", scaleType: "NS", directSide: "N", modeMin: "quick" },
-    { text: "Я быстрее замечаю общую картину, чем отдельные мелочи.", scaleType: "NS", directSide: "N", modeMin: "quick" },
-    { text: "Мне комфортно доверять интуиции, даже если данных пока не хватает.", scaleType: "NS", directSide: "N", modeMin: "quick" },
-    { text: "Я чаще опираюсь на конкретный опыт, чем на догадки и абстракции.", scaleType: "NS", directSide: "S", modeMin: "medium" },
-    { text: "Мне проще замечать факты и детали, чем улавливать скрытые намеки.", scaleType: "NS", directSide: "S", modeMin: "medium" },
-    { text: "Я ценю практичные решения больше, чем красивые теории.", scaleType: "NS", directSide: "S", modeMin: "medium" },
-    { text: "В новых задачах я предпочитаю сначала разобраться в реальных вводных.", scaleType: "NS", directSide: "S", modeMin: "medium" },
-    { text: "Я лучше запоминаю то, что можно увидеть, потрогать или повторить на практике.", scaleType: "NS", directSide: "S", modeMin: "full" },
-    { text: "Чёткие инструкции помогают мне больше, чем свободная интерпретация.", scaleType: "NS", directSide: "S", modeMin: "full" },
-    { text: "Я люблю, когда идеи можно быстро приземлить на понятный результат.", scaleType: "NS", directSide: "S", modeMin: "full" },
-    { text: "В разговоре я чаще спрашиваю про факты, чем про символы и подтексты.", scaleType: "NS", directSide: "S", modeMin: "full" },
-    { text: "Мне проще доверять тому, что уже доказало свою полезность.", scaleType: "NS", directSide: "S", modeMin: "full" },
-
-    { text: "При принятии решений я чаще ставлю логику выше эмоций.", scaleType: "TF", directSide: "T", modeMin: "quick" },
-    { text: "Даже в сложном разговоре мне важно, чтобы вывод оставался объективным.", scaleType: "TF", directSide: "T", modeMin: "quick" },
-    { text: "Я могу спокойно критиковать идею, если она не работает.", scaleType: "TF", directSide: "T", modeMin: "quick" },
-    { text: "В напряженной ситуации я сначала анализирую, а потом сопереживаю.", scaleType: "TF", directSide: "T", modeMin: "quick" },
-    { text: "Для меня честность обычно важнее мягкости формулировки.", scaleType: "TF", directSide: "T", modeMin: "quick" },
-    { text: "Я предпочитаю справедливые правила индивидуальным исключениям.", scaleType: "TF", directSide: "T", modeMin: "quick" },
-    { text: "Мне важно, чтобы решение учитывало чувства всех участников.", scaleType: "TF", directSide: "F", modeMin: "medium" },
-    { text: "Даже если логика на моей стороне, я не хочу ранить человека лишней резкостью.", scaleType: "TF", directSide: "F", modeMin: "medium" },
-    { text: "Я чаще думаю о том, как решение скажется на отношениях, чем о его холодной эффективности.", scaleType: "TF", directSide: "F", modeMin: "medium" },
-    { text: "В команде мне важно, чтобы атмосфера оставалась человечной и тёплой.", scaleType: "TF", directSide: "F", modeMin: "medium" },
-    { text: "Я интуитивно чувствую настроение других и подстраиваю тон общения.", scaleType: "TF", directSide: "F", modeMin: "full" },
-    { text: "Иногда поддержка человека важнее, чем идеальное решение задачи.", scaleType: "TF", directSide: "F", modeMin: "full" },
-    { text: "Мне трудно принять выбор, который выглядит рационально, но кажется бессердечным.", scaleType: "TF", directSide: "F", modeMin: "full" },
-    { text: "Я предпочитаю мягко вести людей к выводу, а не просто выдавать вердикт.", scaleType: "TF", directSide: "F", modeMin: "full" },
-    { text: "Личная лояльность для меня иногда важнее формальной беспристрастности.", scaleType: "TF", directSide: "F", modeMin: "full" },
-
-    { text: "Мне нравится, когда планы понятны заранее и все разложено по полочкам.", scaleType: "JP", directSide: "J", modeMin: "quick" },
-    { text: "Я чувствую себя лучше, когда задачи закрываются до дедлайна.", scaleType: "JP", directSide: "J", modeMin: "quick" },
-    { text: "Мне проще отдыхать, когда все важное уже организовано.", scaleType: "JP", directSide: "J", modeMin: "quick" },
-    { text: "Я люблю списки, расписания и ощущение контроля над временем.", scaleType: "JP", directSide: "J", modeMin: "quick" },
-    { text: "Неожиданные изменения планов обычно меня раздражают.", scaleType: "JP", directSide: "J", modeMin: "quick" },
-    { text: "Я предпочитаю принять решение и двигаться дальше, а не держать варианты открытыми.", scaleType: "JP", directSide: "J", modeMin: "quick" },
-    { text: "Мне нравится оставлять место для импровизации даже в важных делах.", scaleType: "JP", directSide: "P", modeMin: "medium" },
-    { text: "Я часто чувствую себя лучше, когда не фиксирую всё слишком рано.", scaleType: "JP", directSide: "P", modeMin: "medium" },
-    { text: "Спонтанность иногда делает день интереснее, чем идеальный план.", scaleType: "JP", directSide: "P", modeMin: "medium" },
-    { text: "Мне проще адаптироваться на ходу, чем следовать жёсткому сценарию.", scaleType: "JP", directSide: "P", modeMin: "medium" },
-    { text: "Я люблю исследовать варианты до последнего, прежде чем принять окончательное решение.", scaleType: "JP", directSide: "P", modeMin: "full" },
-    { text: "Слишком жёсткие дедлайны быстро убивают у меня вдохновение.", scaleType: "JP", directSide: "P", modeMin: "full" },
-    { text: "Мне нравится, когда у плана есть пространство для неожиданно хороших поворотов.", scaleType: "JP", directSide: "P", modeMin: "full" },
-    { text: "Я не люблю чувствовать, что день расписан настолько плотно, что в нём нет воздуха.", scaleType: "JP", directSide: "P", modeMin: "full" },
-    { text: "Иногда лучший ход для меня — сначала попробовать, а уже потом структурировать.", scaleType: "JP", directSide: "P", modeMin: "full" }
-  ];
+  const questionBank = Object.entries(questionSets).flatMap(([scaleType, modes]) => {
+    return Object.entries(modes).flatMap(([modeMin, questions]) => {
+      return questions.map((question) => ({
+        text: question.text,
+        scaleType,
+        directSide: question.directSide,
+        modeMin
+      }));
+    });
+  });
 
   function getQuestionsByMode(mode) {
     return questionBank.filter((question) => modeOrder[mode] >= modeOrder[question.modeMin]);
