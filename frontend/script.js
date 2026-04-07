@@ -17,6 +17,7 @@
   const state = {
     user: null,
     mode: null,
+    selectedMode: "medium",
     questions: [],
     session: null,
     resumeSession: null,
@@ -29,20 +30,13 @@
   const elements = {
     screens: document.querySelectorAll(".screen"),
     networkStatus: document.getElementById("network-status"),
-    userName: document.getElementById("user-name"),
-    userMeta: document.getElementById("user-meta"),
-    modeGrid: document.getElementById("mode-grid"),
-    resumeCard: document.getElementById("resume-card"),
-    resumeTitle: document.getElementById("resume-title"),
-    resumeMeta: document.getElementById("resume-meta"),
-    resumeButton: document.getElementById("resume-button"),
-    restartActiveButton: document.getElementById("restart-active-button"),
-    lastResultCard: document.getElementById("last-result-card"),
-    lastResultDate: document.getElementById("last-result-date"),
-    lastResultType: document.getElementById("last-result-type"),
-    lastResultCharacter: document.getElementById("last-result-character"),
-    lastResultSummary: document.getElementById("last-result-summary"),
-    openHistoryButton: document.getElementById("open-history-button"),
+    auraRow: document.getElementById("aura-row"),
+    modeFocusPanel: document.getElementById("mode-focus-panel"),
+    selectedModeName: document.getElementById("selected-mode-name"),
+    selectedModeMeta: document.getElementById("selected-mode-meta"),
+    selectedModeDescription: document.getElementById("selected-mode-description"),
+    selectedModeNote: document.getElementById("selected-mode-note"),
+    modeCtaButton: document.getElementById("mode-cta-button"),
     backButton: document.getElementById("back-button"),
     syncChip: document.getElementById("sync-chip"),
     modeBadge: document.getElementById("mode-badge"),
@@ -76,26 +70,25 @@
   };
 
   createAnswerButtons();
-  renderModeCards();
   bindEvents();
   initializeApp();
 
   async function initializeApp() {
     setNetworkStatus();
     state.user = initTelegram();
-    renderUser();
 
     await api.upsertUser(state.user);
     await api.syncPendingSession(state.user);
 
     state.resumeSession = await api.getActiveSession(state.user.telegramId);
     state.latestResult = await api.getLatestResult(state.user.telegramId);
-
+    hydrateSelectedMode();
     renderStartState();
   }
 
   function initTelegram() {
     const webApp = window.Telegram?.WebApp;
+
     if (webApp) {
       webApp.ready();
       webApp.expand();
@@ -120,20 +113,13 @@
   }
 
   function bindEvents() {
-    elements.resumeButton.addEventListener("click", resumeSessionFlow);
-    elements.restartActiveButton.addEventListener("click", async () => {
-      if (!state.resumeSession) {
-        return;
-      }
-
-      await startMode(state.resumeSession.mode, true);
-    });
+    elements.auraRow.addEventListener("click", handleAuraSelection);
+    elements.modeCtaButton.addEventListener("click", handleModeCta);
     elements.backButton.addEventListener("click", handleBack);
     elements.nextButton.addEventListener("click", handleNext);
     elements.shareButton.addEventListener("click", handleShare);
     elements.historyButton.addEventListener("click", openHistory);
     elements.restartButton.addEventListener("click", handleRestart);
-    elements.openHistoryButton.addEventListener("click", openHistory);
     elements.closeHistoryButton.addEventListener("click", closeHistory);
     elements.historyCloseBackdrop.addEventListener("click", closeHistory);
 
@@ -143,6 +129,8 @@
 
   function handleConnectivityChange() {
     setNetworkStatus();
+    renderSyncChip();
+
     if (navigator.onLine) {
       syncRemoteState();
     }
@@ -160,46 +148,102 @@
     if (synced?.mbtiType) {
       state.result = normalizeResult(synced);
       renderResult();
+      showScreen("result-screen");
     }
 
+    hydrateSelectedMode();
     renderStartState();
     renderSyncChip();
   }
 
-  function renderUser() {
-    const displayName = state.user.username
-      ? `@${state.user.username}`
-      : `${state.user.firstName}${state.user.lastName ? ` ${state.user.lastName}` : ""}`;
-
-    elements.userName.textContent = displayName;
-    elements.userMeta.textContent = state.user.telegramId === "local-demo-user"
-      ? "Локальный test-mode без Telegram user data"
-      : `Telegram ID: ${state.user.telegramId}`;
+  function hydrateSelectedMode() {
+    const availableModes = new Set(questionData.modeOptions.map((mode) => mode.key));
+    const preferredMode = state.resumeSession?.mode || state.selectedMode || state.latestResult?.mode || "medium";
+    state.selectedMode = availableModes.has(preferredMode) ? preferredMode : "medium";
   }
 
-  function renderModeCards() {
-    elements.modeGrid.innerHTML = "";
+  function getModeDetails(modeKey = state.selectedMode) {
+    return questionData.modeOptions.find((mode) => mode.key === modeKey) || questionData.modeOptions[0];
+  }
+
+  function renderStartState() {
+    renderAuraModes();
+    renderModeFocus();
+    renderSyncChip();
+  }
+
+  function renderAuraModes() {
+    elements.auraRow.innerHTML = "";
 
     questionData.modeOptions.forEach((mode) => {
-      const card = document.createElement("article");
-      card.className = "mode-card";
-      card.innerHTML = `
-        <div class="mode-card-header">
-          <div>
-            <h3>${mode.title}</h3>
-            <p>${mode.subtitle}</p>
-          </div>
-          <div class="mode-badge">${mode.key}</div>
-        </div>
-        <p>${mode.description}</p>
-        <button class="primary-button" type="button" data-mode="${mode.key}">Выбрать ${mode.title}</button>
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `mode-aura mode-aura--${mode.accent}`;
+      button.dataset.mode = mode.key;
+      button.setAttribute("role", "tab");
+      button.setAttribute("aria-selected", String(mode.key === state.selectedMode));
+      button.innerHTML = `
+        <span class="mode-aura__orb" aria-hidden="true"></span>
+        <span class="mode-aura__label">${mode.title}</span>
+        <span class="mode-aura__detail">${mode.duration}</span>
       `;
-      elements.modeGrid.appendChild(card);
-    });
 
-    elements.modeGrid.querySelectorAll("[data-mode]").forEach((button) => {
-      button.addEventListener("click", () => startMode(button.dataset.mode));
+      if (mode.key === state.selectedMode) {
+        button.classList.add("is-selected");
+      }
+
+      elements.auraRow.appendChild(button);
     });
+  }
+
+  function renderModeFocus() {
+    const selectedMode = getModeDetails();
+    const hasResumeForSelected = state.resumeSession?.mode === selectedMode.key;
+    const resumeLabel = state.resumeSession
+      ? getModeDetails(state.resumeSession.mode)?.title || state.resumeSession.mode
+      : null;
+
+    elements.selectedModeName.textContent = selectedMode.title;
+    elements.selectedModeMeta.textContent = `${selectedMode.subtitle} - ${selectedMode.duration}`;
+    elements.selectedModeDescription.textContent = selectedMode.description;
+    elements.modeFocusPanel.dataset.accent = selectedMode.accent;
+    elements.modeCtaButton.dataset.accent = selectedMode.accent;
+
+    if (hasResumeForSelected) {
+      elements.selectedModeNote.textContent = `Resume from question ${state.resumeSession.currentQuestionIndex + 1} of ${state.resumeSession.totalQuestions}.`;
+      elements.selectedModeNote.classList.remove("hidden");
+      elements.modeCtaButton.textContent = `Continue ${selectedMode.title} Depth`;
+    } else if (state.resumeSession) {
+      elements.selectedModeNote.textContent = `An unfinished ${resumeLabel} session is saved. Starting here will replace it.`;
+      elements.selectedModeNote.classList.remove("hidden");
+      elements.modeCtaButton.textContent = selectedMode.ctaLabel;
+    } else {
+      elements.selectedModeNote.textContent = "";
+      elements.selectedModeNote.classList.add("hidden");
+      elements.modeCtaButton.textContent = selectedMode.ctaLabel;
+    }
+  }
+
+  function handleAuraSelection(event) {
+    const trigger = event.target.closest("[data-mode]");
+
+    if (!trigger) {
+      return;
+    }
+
+    state.selectedMode = trigger.dataset.mode;
+    renderStartState();
+  }
+
+  async function handleModeCta() {
+    const selectedMode = getModeDetails();
+
+    if (state.resumeSession?.mode === selectedMode.key) {
+      await resumeSessionFlow();
+      return;
+    }
+
+    await startMode(selectedMode.key);
   }
 
   function createAnswerButtons() {
@@ -221,7 +265,8 @@
 
   async function startMode(mode, replaceExisting = false) {
     if (state.resumeSession && !replaceExisting) {
-      const shouldReplace = window.confirm("У тебя есть незавершённая сессия. Начать новую и сбросить текущий прогресс?");
+      const shouldReplace = window.confirm("You already have an unfinished session. Start a new one and replace the saved progress?");
+
       if (!shouldReplace) {
         return;
       }
@@ -237,6 +282,7 @@
 
     const bundle = await api.getQuestions(mode);
     state.mode = mode;
+    state.selectedMode = mode;
     state.questions = bundle.questions;
     state.session = ensureSessionShape(session, bundle.totalQuestions);
     state.resumeSession = state.session;
@@ -253,6 +299,7 @@
 
     const bundle = await api.getQuestions(state.resumeSession.mode);
     state.mode = state.resumeSession.mode;
+    state.selectedMode = state.resumeSession.mode;
     state.questions = bundle.questions;
     state.session = ensureSessionShape(state.resumeSession, bundle.totalQuestions);
     showScreen("test-screen");
@@ -289,6 +336,7 @@
     }
 
     const answer = state.session.answers[state.session.currentQuestionIndex];
+
     if (typeof answer !== "number") {
       return;
     }
@@ -312,6 +360,7 @@
 
     if (state.session.currentQuestionIndex === 0) {
       state.resumeSession = state.session;
+      state.selectedMode = state.session.mode;
       renderStartState();
       showScreen("start-screen");
       return;
@@ -327,10 +376,12 @@
   async function finishSession() {
     const provisionalResult = await buildLocalResult();
     const payload = await api.completeSession(state.session, provisionalResult);
+
     state.result = normalizeResult(payload, state.mode);
     state.latestResult = state.result;
     state.resumeSession = null;
     state.session = null;
+    state.selectedMode = state.result.mode;
     renderResult();
     showScreen("result-screen");
   }
@@ -351,13 +402,13 @@
       const maxAbs = Math.max(counts[scaleType] * 3, 1);
       const score = totals[scaleType];
       const leftPercent = clamp(Math.round(((score + maxAbs) / (maxAbs * 2)) * 100), 0, 100);
-      const rightPercent = 100 - leftPercent;
+
       return {
         scaleType,
         leftSide,
         rightSide,
         leftPercent,
-        rightPercent,
+        rightPercent: 100 - leftPercent,
         dominantSide: score >= 0 ? leftSide : rightSide,
         rawScore: score
       };
@@ -376,7 +427,7 @@
       mode: state.mode,
       createdAt: new Date().toISOString(),
       sessionId: state.session.id,
-      summaryText: `${type} — ${typeProfile.name}. ${typeProfile.description}`,
+      summaryText: `${type} - ${typeProfile.name}. ${typeProfile.description}`,
       scales,
       mainCharacter: characterPackage.main,
       similarCharacters: characterPackage.others
@@ -401,7 +452,7 @@
       type,
       typeProfile,
       mode: payload.mode || fallbackMode || payload.session?.mode || "quick",
-      summaryText: payload.summaryText || payload.calculation?.summaryText || `${type} — ${typeProfile.name}. ${typeProfile.description}`,
+      summaryText: payload.summaryText || payload.calculation?.summaryText || `${type} - ${typeProfile.name}. ${typeProfile.description}`,
       scales,
       mainCharacter: payload.mainCharacter || null,
       similarCharacters: payload.similarCharacters || payload.others || [],
@@ -430,38 +481,6 @@
     });
   }
 
-  function renderStartState() {
-    renderResumeCard();
-    renderLastResultCard();
-    renderSyncChip();
-  }
-
-  function renderResumeCard() {
-    if (!state.resumeSession) {
-      elements.resumeCard.classList.add("hidden");
-      return;
-    }
-
-    elements.resumeCard.classList.remove("hidden");
-    const modeLabel = questionData.modeOptions.find((mode) => mode.key === state.resumeSession.mode)?.title || state.resumeSession.mode;
-    elements.resumeTitle.textContent = `${modeLabel} session`;
-    elements.resumeMeta.textContent = `Вопрос ${state.resumeSession.currentQuestionIndex + 1} из ${state.resumeSession.totalQuestions}`;
-  }
-
-  function renderLastResultCard() {
-    if (!state.latestResult) {
-      elements.lastResultCard.classList.add("hidden");
-      return;
-    }
-
-    const result = normalizeResult(state.latestResult);
-    elements.lastResultCard.classList.remove("hidden");
-    elements.lastResultDate.textContent = formatDate(result.createdAt);
-    elements.lastResultType.textContent = result.type;
-    elements.lastResultCharacter.textContent = result.mainCharacter?.name || "Главный персонаж скоро появится";
-    elements.lastResultSummary.textContent = result.summaryText;
-  }
-
   function renderQuestion() {
     if (!state.session || !state.questions.length) {
       return;
@@ -472,15 +491,15 @@
     const answer = state.session.answers[index];
     const progress = ((index + 1) / state.questions.length) * 100;
 
-    elements.modeBadge.textContent = questionData.modeOptions.find((item) => item.key === state.mode)?.title || state.mode;
-    elements.questionCounter.textContent = `Вопрос ${index + 1} из ${state.questions.length}`;
+    elements.modeBadge.textContent = getModeDetails(state.mode)?.title || state.mode;
+    elements.questionCounter.textContent = `Question ${index + 1} of ${state.questions.length}`;
     elements.progressFill.style.width = `${progress}%`;
     elements.questionTypeBadge.textContent = questionData.scaleLabels[question.scaleType];
     elements.questionText.textContent = question.text;
     elements.answerHint.textContent = typeof answer === "number"
-      ? questionData.answerOptions.find((option) => option.value === answer)?.label || "Ответ сохранён"
-      : "Выбери один вариант, чтобы продолжить.";
-    elements.nextButton.textContent = index === state.questions.length - 1 ? "Показать результат" : "Далее";
+      ? questionData.answerOptions.find((option) => option.value === answer)?.label || "Answer saved"
+      : "Choose one option to continue.";
+    elements.nextButton.textContent = index === state.questions.length - 1 ? "Show Result" : "Next";
     elements.nextButton.disabled = typeof answer !== "number";
     syncAnswerButtons(answer);
     renderSyncChip();
@@ -500,21 +519,22 @@
     }
 
     const result = state.result;
-    const modeLabel = questionData.modeOptions.find((mode) => mode.key === result.mode)?.title || result.mode;
+    const modeLabel = getModeDetails(result.mode)?.title || result.mode;
     const mainCharacter = result.mainCharacter || {
       name: "Character loading",
       anime: "Anime MBTI",
-      description: "Данные персонажа появятся после синхронизации.",
+      description: "Character details will appear after synchronization.",
       imageUrl: "https://placehold.co/720x880/0e162d/f4f7ff?text=Anime+MBTI",
       traits: ["Pending", "Sync", "Cache"]
     };
 
     elements.resultType.textContent = result.type;
     elements.resultTypeName.textContent = result.typeProfile?.name || result.type;
-    elements.resultTypeDescription.textContent = result.typeProfile?.description || "Уникальная комбинация черт личности.";
+    elements.resultTypeDescription.textContent = result.typeProfile?.description || "A unique combination of personality traits.";
     elements.resultSummary.textContent = result.summaryText;
     elements.resultModeBadge.textContent = modeLabel;
     elements.mainCharacterImage.src = mainCharacter.imageUrl;
+    elements.mainCharacterImage.alt = mainCharacter.name;
     elements.mainCharacterName.textContent = mainCharacter.name;
     elements.mainCharacterAnime.textContent = mainCharacter.anime;
     elements.mainCharacterDescription.textContent = mainCharacter.description;
@@ -527,6 +547,7 @@
 
   function renderTraits(container, traits) {
     container.innerHTML = "";
+
     traits.forEach((trait) => {
       const pill = document.createElement("span");
       pill.className = "trait-pill";
@@ -597,7 +618,7 @@
     if (!state.history.length) {
       const empty = document.createElement("article");
       empty.className = "history-item";
-      empty.innerHTML = "<p>История пока пустая. Пройди тест хотя бы один раз.</p>";
+      empty.innerHTML = "<p>No history yet. Finish a test to create your first result.</p>";
       elements.historyList.appendChild(empty);
       return;
     }
@@ -608,14 +629,14 @@
       historyCard.className = "history-item";
       historyCard.innerHTML = `
         <div class="history-top">
-          <strong>${item.type} · ${item.typeProfile?.name || item.type}</strong>
+          <strong>${item.type} - ${item.typeProfile?.name || item.type}</strong>
           <span class="history-meta">${formatDate(item.createdAt)}</span>
         </div>
         <div class="history-body">
           <img class="history-avatar" src="${item.mainCharacter?.iconUrl || "https://placehold.co/96x96/18233f/eef3ff?text=MB"}" alt="${item.mainCharacter?.name || "Character"}">
           <div>
-            <h3>${item.mainCharacter?.name || "Главный персонаж"}</h3>
-            <p>${questionData.modeOptions.find((mode) => mode.key === item.mode)?.title || item.mode} mode</p>
+            <h3>${item.mainCharacter?.name || "Main Character"}</h3>
+            <p>${getModeDetails(item.mode)?.title || item.mode} mode</p>
             <p>${item.summaryText}</p>
           </div>
         </div>
@@ -629,7 +650,7 @@
       return;
     }
 
-    const shareText = `Я прошёл Anime MBTI Test! Мой тип — ${state.result.type}, мой персонаж — ${state.result.mainCharacter?.name || "Unknown"}`;
+    const shareText = `I took the Anime MBTI Test! My type is ${state.result.type}, and my character is ${state.result.mainCharacter?.name || "Unknown"}.`;
     const shareUrl = `https://t.me/share/url?url=${encodeURIComponent("https://t.me")}&text=${encodeURIComponent(shareText)}`;
 
     try {
@@ -647,9 +668,9 @@
       }
 
       await navigator.clipboard.writeText(shareText);
-      elements.shareFeedback.textContent = "Текст результата скопирован в буфер обмена.";
+      elements.shareFeedback.textContent = "Result text copied to clipboard.";
     } catch (error) {
-      elements.shareFeedback.textContent = "Не удалось поделиться результатом. Попробуй ещё раз.";
+      elements.shareFeedback.textContent = "Could not share the result. Please try again.";
     }
   }
 
@@ -657,20 +678,26 @@
     state.session = null;
     state.result = null;
     state.historyLoaded = false;
+    hydrateSelectedMode();
+    renderStartState();
     showScreen("start-screen");
     syncRemoteState();
   }
 
   function renderSyncChip() {
+    if (!elements.syncChip) {
+      return;
+    }
+
     if (!state.session && !state.resumeSession) {
-      elements.syncChip.textContent = navigator.onLine ? "Сервер доступен" : "Оффлайн режим";
+      elements.syncChip.textContent = navigator.onLine ? "Server connected" : "Offline mode";
       return;
     }
 
     const session = state.session || state.resumeSession;
     elements.syncChip.textContent = session?.synced === false
-      ? "Оффлайн: ждём синхронизацию"
-      : "Прогресс сохранён на сервере";
+      ? "Offline: waiting for sync"
+      : "Progress saved to server";
   }
 
   function setNetworkStatus() {
@@ -681,12 +708,14 @@
     elements.screens.forEach((screen) => {
       screen.classList.toggle("is-visible", screen.id === screenId);
     });
+
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function formatDate(value) {
     const date = new Date(value || Date.now());
-    return new Intl.DateTimeFormat("ru-RU", {
+
+    return new Intl.DateTimeFormat("en-US", {
       day: "2-digit",
       month: "short",
       hour: "2-digit",

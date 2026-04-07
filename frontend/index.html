@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -17,60 +17,33 @@
 
   <main class="app-shell">
     <section class="screen is-visible" id="start-screen">
-      <div class="glass-card hero-card">
-        <div class="hero-head">
-          <div>
-            <p class="eyebrow">Phase 2</p>
-            <h1>Anime MBTI Test</h1>
-          </div>
+      <div class="start-shell">
+        <div class="start-topbar">
           <div class="status-pill" id="network-status">Online</div>
         </div>
 
-        <p class="hero-text">
-          Выбери глубину теста, проходи в своем темпе и возвращайся к незавершённой сессии с любого устройства.
-        </p>
+        <div class="mode-stage">
+          <div class="start-copy">
+            <h1>Anime MBTI Test</h1>
+            <p class="start-subtitle">Choose your depth</p>
+          </div>
 
-        <div class="user-panel">
-          <div>
-            <p class="panel-label">Пользователь</p>
-            <div class="user-name" id="user-name">Загрузка...</div>
-          </div>
-          <div class="user-meta" id="user-meta">Синхронизация с Telegram / local fallback</div>
-        </div>
+          <div class="aura-row" id="aura-row" role="tablist" aria-label="Test modes"></div>
 
-        <div class="resume-card hidden" id="resume-card">
-          <div>
-            <p class="panel-label">Незавершённая сессия</p>
-            <h2 id="resume-title">Medium</h2>
-            <p class="resume-meta" id="resume-meta">Вопрос 8 из 40</p>
-          </div>
-          <div class="resume-actions">
-            <button class="primary-button" id="resume-button" type="button">Продолжить</button>
-            <button class="secondary-button" id="restart-active-button" type="button">Начать заново</button>
-          </div>
-        </div>
-
-        <div class="section-block">
-          <div class="section-head">
-            <h2>Режим теста</h2>
-            <p>Одна общая система вопросов, три уровня глубины.</p>
-          </div>
-          <div class="mode-grid" id="mode-grid"></div>
-        </div>
-
-        <div class="last-result-card hidden" id="last-result-card">
-          <div class="section-head">
-            <h2>Последний результат</h2>
-            <p id="last-result-date">Недавно</p>
-          </div>
-          <div class="last-result-content">
-            <div>
-              <div class="result-type-chip" id="last-result-type">ENTP</div>
-              <h3 id="last-result-character">Gojo Satoru</h3>
-              <p id="last-result-summary">Краткая сводка последнего прохождения.</p>
+          <div class="mode-focus-panel" id="mode-focus-panel">
+            <div class="mode-focus-head">
+              <div>
+                <h2 id="selected-mode-name">Medium</h2>
+                <p class="mode-focus-meta" id="selected-mode-meta">40 questions - 4-6 min</p>
+              </div>
             </div>
-            <button class="ghost-button" id="open-history-button" type="button">История</button>
+            <p class="mode-focus-description" id="selected-mode-description">
+              A balanced read with more nuance and a stronger character match.
+            </p>
+            <p class="mode-focus-note" id="selected-mode-note"></p>
           </div>
+
+          <button class="primary-button mode-cta" id="mode-cta-button" type="button">Open Medium Depth</button>
         </div>
       </div>
     </section>
@@ -78,13 +51,13 @@
     <section class="screen" id="test-screen">
       <div class="glass-card test-card">
         <div class="test-topbar">
-          <button class="ghost-button" id="back-button" type="button">Назад</button>
-          <div class="sync-chip" id="sync-chip">Локальный кэш активен</div>
+          <button class="ghost-button" id="back-button" type="button">Back</button>
+          <div class="sync-chip" id="sync-chip">Local cache active</div>
         </div>
 
         <div class="test-meta">
           <div class="mode-badge" id="mode-badge">Quick</div>
-          <div class="question-counter" id="question-counter">Вопрос 1 из 24</div>
+          <div class="question-counter" id="question-counter">Question 1 of 24</div>
         </div>
 
         <div class="progress-block">
@@ -93,19 +66,19 @@
           </div>
         </div>
 
-        <div class="question-badge" id="question-type-badge">Шкала E / I</div>
-        <h2 class="question-text" id="question-text">Загрузка вопроса...</h2>
+        <div class="question-badge" id="question-type-badge">Scale E / I</div>
+        <h2 class="question-text" id="question-text">Loading question...</h2>
 
         <div class="scale-legend">
-          <span>Не согласен</span>
-          <span>Нейтрально</span>
-          <span>Согласен</span>
+          <span>Disagree</span>
+          <span>Neutral</span>
+          <span>Agree</span>
         </div>
 
-        <div class="answer-scale" id="answer-scale" role="radiogroup" aria-label="Шкала ответа"></div>
-        <p class="answer-hint" id="answer-hint">Выбери один вариант, чтобы продолжить.</p>
+        <div class="answer-scale" id="answer-scale" role="radiogroup" aria-label="Answer scale"></div>
+        <p class="answer-hint" id="answer-hint">Choose one option to continue.</p>
 
-        <button class="primary-button" id="next-button" type="button" disabled>Далее</button>
+        <button class="primary-button" id="next-button" type="button" disabled>Next</button>
       </div>
     </section>
 
@@ -113,28 +86,28 @@
       <div class="glass-card result-card">
         <div class="result-head">
           <div>
-            <p class="eyebrow">Твой результат</p>
+            <p class="eyebrow">Your Result</p>
             <div class="result-type" id="result-type">ENTP</div>
-            <div class="result-type-name" id="result-type-name">Полемист</div>
+            <div class="result-type-name" id="result-type-name">Debater</div>
           </div>
           <div class="mode-badge" id="result-mode-badge">Medium</div>
         </div>
 
         <p class="result-description" id="result-type-description">
-          Описание типа личности и общий вайб результата.
+          Type overview and overall personality vibe.
         </p>
         <p class="result-summary" id="result-summary">
-          Краткий summary с серверной стороны.
+          Server-generated result summary.
         </p>
 
         <article class="character-feature">
-          <img class="character-feature-image" id="main-character-image" alt="Главный персонаж">
+          <img class="character-feature-image" id="main-character-image" alt="Main character">
           <div class="character-feature-content">
-            <div class="character-tag">Главный персонаж</div>
+            <div class="character-tag">Main Character</div>
             <h2 id="main-character-name">Gojo Satoru</h2>
             <p class="character-anime" id="main-character-anime">Jujutsu Kaisen</p>
             <p class="character-description" id="main-character-description">
-              Подробное описание персонажа.
+              Character description.
             </p>
             <div class="trait-list" id="main-character-traits"></div>
           </div>
@@ -143,25 +116,25 @@
         <div class="result-grid">
           <div class="result-section">
             <div class="section-head">
-              <h3>Похожие персонажи</h3>
-              <p>Ещё 3 совпадения по типу</p>
+              <h3>Similar Characters</h3>
+              <p>Three more matches for your type</p>
             </div>
             <div class="similar-grid" id="similar-characters"></div>
           </div>
 
           <div class="result-section">
             <div class="section-head">
-              <h3>Проценты по шкалам</h3>
-              <p>Серверный расчёт + локальный fallback</p>
+              <h3>Percentages</h3>
+              <p>Server calculation with local fallback</p>
             </div>
             <div class="score-list" id="score-list"></div>
           </div>
         </div>
 
         <div class="result-actions">
-          <button class="primary-button" id="share-button" type="button">Поделиться</button>
-          <button class="secondary-button" id="history-button" type="button">Посмотреть историю</button>
-          <button class="ghost-button" id="restart-button" type="button">Пройти заново</button>
+          <button class="primary-button" id="share-button" type="button">Share</button>
+          <button class="secondary-button" id="history-button" type="button">History</button>
+          <button class="ghost-button" id="restart-button" type="button">Start Again</button>
         </div>
 
         <p class="share-feedback" id="share-feedback" aria-live="polite"></p>
@@ -174,10 +147,10 @@
     <div class="modal-card glass-card">
       <div class="modal-head">
         <div>
-          <p class="eyebrow">История</p>
-          <h2>Прошлые прохождения</h2>
+          <p class="eyebrow">History</p>
+          <h2>Past sessions</h2>
         </div>
-        <button class="ghost-button" id="close-history-button" type="button">Закрыть</button>
+        <button class="ghost-button" id="close-history-button" type="button">Close</button>
       </div>
       <div class="history-list" id="history-list"></div>
     </div>

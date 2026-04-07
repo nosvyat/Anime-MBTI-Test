@@ -1,7 +1,7 @@
 window.APP_QUESTION_DATA = (() => {
   const modeOrder = { quick: 1, medium: 2, full: 3 };
 
-  const modeOptions = [
+  const legacyModeOptions = [
     {
       key: "quick",
       title: "Quick",
@@ -19,6 +19,36 @@ window.APP_QUESTION_DATA = (() => {
       title: "Full",
       subtitle: "60 вопросов",
       description: "Максимально подробный проход с полным балансом по всем шкалам."
+    }
+  ];
+
+  const modeOptions = [
+    {
+      key: "quick",
+      title: "Quick",
+      subtitle: "24 questions",
+      duration: "2-3 min",
+      accent: "blue",
+      description: "A fast pulse read for a sharp type reveal and a quick anime match.",
+      ctaLabel: "Enter Quick Depth"
+    },
+    {
+      key: "medium",
+      title: "Medium",
+      subtitle: "40 questions",
+      duration: "4-6 min",
+      accent: "violet",
+      description: "A balanced read with more nuance, steadier patterns, and a richer character fit.",
+      ctaLabel: "Open Medium Depth"
+    },
+    {
+      key: "full",
+      title: "Full",
+      subtitle: "60 questions",
+      duration: "8-10 min",
+      accent: "pink",
+      description: "The full aura scan with maximum depth, stronger balance, and the clearest personality silhouette.",
+      ctaLabel: "Unlock Full Depth"
     }
   ];
 
