@@ -1,0 +1,14 @@
+{
+  "name": "anime-mbti-test",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Root Railway launcher for Anime MBTI Test",
+  "scripts": {
+    "postinstall": "npm --prefix backend install",
+    "start": "node backend/server.js",
+    "dev": "npm --prefix backend run dev"
+  },
+  "engines": {
+    "node": "24.x"
+  }
+}

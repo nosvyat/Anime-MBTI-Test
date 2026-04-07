@@ -37,3 +37,17 @@ Phase 2 version of the Telegram Mini App with a static frontend and Node.js + SQ
    [http://127.0.0.1:3000](http://127.0.0.1:3000)
 
 The backend serves the frontend statically, so one process is enough for local development.
+
+## Railway
+
+This repository is deployable from the repo root.
+
+- Railway can use the root `package.json`
+- `npm start` launches `backend/server.js`
+- backend dependencies are installed automatically through the root `postinstall` script
+
+If your Railway service was previously pointing to a deleted branch, reconnect it to:
+
+- branch: `codex/phase2-backend-upgrade`
+
+After redeploy succeeds, Railway can generate a public domain for the service.
