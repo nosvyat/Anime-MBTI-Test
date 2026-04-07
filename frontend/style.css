@@ -297,8 +297,45 @@ h1 {
   box-shadow: 0 16px 36px rgba(6, 10, 18, 0.34);
 }
 
+#hub-screen {
+  position: relative;
+  width: 100vw;
+  min-height: 100vh;
+  margin:
+    calc(-1 * (16px + env(safe-area-inset-top)))
+    calc(50% - 50vw)
+    calc(-1 * (16px + env(safe-area-inset-bottom)));
+  padding: calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom));
+  overflow: hidden;
+  isolation: isolate;
+}
+
+#hub-screen::before,
+#hub-screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+#hub-screen::before {
+  background:
+    linear-gradient(180deg, rgba(8, 12, 22, 0.18), rgba(8, 12, 22, 0.18)),
+    url("assets/welcome-anime-screen.png") center center / cover no-repeat;
+  transform: scale(1.03);
+}
+
+#hub-screen::after {
+  background:
+    linear-gradient(180deg, rgba(4, 7, 15, 0.46) 0%, rgba(4, 7, 15, 0.68) 34%, rgba(4, 7, 15, 0.8) 68%, rgba(4, 7, 15, 0.92) 100%),
+    linear-gradient(90deg, rgba(4, 7, 15, 0.34) 0%, rgba(4, 7, 15, 0.12) 42%, rgba(4, 7, 15, 0.38) 100%);
+}
+
 .app-frame {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 640px);
   min-height: calc(100vh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  margin: 0 auto;
   display: grid;
   grid-template-rows: auto 1fr auto;
   gap: 18px;
@@ -374,13 +411,14 @@ h1 {
   width: clamp(88px, 24vw, 110px);
   aspect-ratio: 1;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   background:
-    radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.66), rgba(255, 255, 255, 0.06) 18%, rgba(var(--aura-rgb), 0.42) 34%, rgba(7, 10, 20, 0.18) 64%, rgba(7, 10, 20, 0) 76%);
+    radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.26) 16%, rgba(var(--aura-rgb), 0.94) 38%, rgba(var(--aura-rgb), 0.74) 56%, rgba(8, 12, 22, 0.94) 76%);
   box-shadow:
-    inset 0 0 24px rgba(255, 255, 255, 0.08),
-    0 0 28px rgba(var(--aura-rgb), 0.22),
-    0 0 54px rgba(var(--aura-rgb), 0.14);
+    inset 0 0 28px rgba(255, 255, 255, 0.16),
+    inset 0 -18px 28px rgba(7, 10, 20, 0.34),
+    0 0 36px rgba(var(--aura-rgb), 0.34),
+    0 0 72px rgba(var(--aura-rgb), 0.2);
   transition:
     transform var(--transition-soft),
     box-shadow var(--transition-soft),
@@ -401,16 +439,16 @@ h1 {
 .mode-aura__orb::before {
   width: 118%;
   height: 118%;
-  border: 1px solid rgba(var(--aura-rgb), 0.16);
-  opacity: 0.42;
+  border: 1px solid rgba(var(--aura-rgb), 0.28);
+  opacity: 0.58;
 }
 
 .mode-aura__orb::after {
   width: 150%;
   height: 150%;
-  background: radial-gradient(circle, rgba(var(--aura-rgb), 0.22), rgba(var(--aura-rgb), 0.06) 42%, transparent 70%);
-  filter: blur(18px);
-  opacity: 0.56;
+  background: radial-gradient(circle, rgba(var(--aura-rgb), 0.34), rgba(var(--aura-rgb), 0.14) 42%, transparent 72%);
+  filter: blur(20px);
+  opacity: 0.72;
 }
 
 .mode-aura__label {
@@ -444,11 +482,12 @@ h1 {
 }
 
 .mode-aura.is-selected .mode-aura__orb {
-  border-color: rgba(255, 255, 255, 0.26);
+  border-color: rgba(255, 255, 255, 0.34);
   box-shadow:
-    inset 0 0 28px rgba(255, 255, 255, 0.12),
-    0 0 42px rgba(var(--aura-rgb), 0.34),
-    0 0 92px rgba(var(--aura-rgb), 0.24);
+    inset 0 0 34px rgba(255, 255, 255, 0.18),
+    inset 0 -20px 32px rgba(7, 10, 20, 0.38),
+    0 0 48px rgba(var(--aura-rgb), 0.42),
+    0 0 110px rgba(var(--aura-rgb), 0.28);
   animation: aura-breathe 3.8s ease-in-out infinite, aura-pulse 4.2s ease-in-out infinite;
 }
 
@@ -654,9 +693,11 @@ h1 {
   gap: 10px;
   padding: 12px;
   border-radius: 26px;
-  background: rgba(8, 12, 24, 0.92);
+  background: rgba(7, 11, 22, 0.82);
   border: 1px solid var(--border-soft);
   box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
 
 .tabbar-button {
