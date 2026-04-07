@@ -1,0 +1,14 @@
+{
+  "name": "anime-mbti-test-backend",
+  "version": "1.0.0",
+  "description": "Phase 2 backend for Anime MBTI Test Telegram Mini App",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
