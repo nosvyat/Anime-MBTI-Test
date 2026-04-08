@@ -35,6 +35,10 @@ body {
   min-height: 100%;
 }
 
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
   margin: 0;
   font-family: "Manrope", sans-serif;
@@ -44,6 +48,9 @@ body {
     radial-gradient(circle at 85% 18%, rgba(152, 113, 255, 0.16), transparent 24%),
     radial-gradient(circle at 50% 82%, rgba(228, 114, 255, 0.12), transparent 28%),
     linear-gradient(180deg, var(--bg-start), var(--bg-mid) 52%, var(--bg-end));
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 button,
@@ -55,6 +62,42 @@ select {
 
 button:disabled {
   cursor: not-allowed;
+}
+
+body *:not(input):not(textarea) {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+img {
+  -webkit-user-drag: none;
+  user-select: none;
+  pointer-events: none;
+}
+
+input,
+textarea {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+
+button,
+[role="button"],
+.tabbar-button,
+.mode-aura,
+.type-card {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+button:focus,
+[role="button"]:focus,
+.tabbar-button:focus,
+.mode-aura:focus,
+.type-card:focus {
+  outline: none;
 }
 
 .hidden {
