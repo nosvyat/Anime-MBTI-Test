@@ -57,19 +57,24 @@ window.AnimeMbtiApi = (() => {
 
   function getFallbackCharacters(mbtiType) {
     const data = window.APP_CHARACTER_DATA;
-    const group = data.groups[mbtiType];
+    const requestedType = String(mbtiType || "").toUpperCase();
+    const baseType = data.normalizeTypeCode ? data.normalizeTypeCode(requestedType) : requestedType;
+    const group = data.groups[baseType];
+    const typeDetails = data.typeDetails[requestedType] || data.typeDetails[baseType] || {};
+
     return {
-      mbtiType,
+      mbtiType: requestedType,
+      baseMbtiType: baseType,
       typeProfile: {
-        code: mbtiType,
-        ...data.typeDetails[mbtiType]
+        code: requestedType,
+        ...typeDetails
       },
-      main: group ? { id: `${mbtiType}-main`, ...group.main, mbtiType, roleType: "main" } : null,
+      main: group ? { id: `${baseType}-main`, ...group.main, mbtiType: requestedType, roleType: "main" } : null,
       others: group
         ? group.others.map((character, index) => ({
-            id: `${mbtiType}-support-${index + 1}`,
+            id: `${baseType}-support-${index + 1}`,
             ...character,
-            mbtiType,
+            mbtiType: requestedType,
             roleType: "support"
           }))
         : []

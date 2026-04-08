@@ -1,5 +1,5 @@
 const { all, get } = require("../db/database");
-const { getTypeProfile } = require("./catalogService");
+const { getTypeProfile, normalizeTypeCode } = require("./catalogService");
 
 function mapCharacter(row) {
   if (!row) {
@@ -28,21 +28,26 @@ function getCharacterById(id) {
 }
 
 function getCharactersByType(mbtiType) {
+  const baseType = normalizeTypeCode(mbtiType);
+
   return all(`
     SELECT * FROM characters
     WHERE mbti_type = ?
     ORDER BY CASE role_type WHEN 'main' THEN 0 ELSE 1 END ASC, priority ASC, id ASC
-  `, [String(mbtiType).toUpperCase()]).map(mapCharacter);
+  `, [baseType]).map(mapCharacter);
 }
 
 function getCharacterPackageByType(mbtiType) {
-  const characters = getCharactersByType(mbtiType);
+  const requestedType = String(mbtiType || "").toUpperCase();
+  const baseType = normalizeTypeCode(requestedType);
+  const characters = getCharactersByType(baseType);
   const main = characters.find((character) => character.roleType === "main") || characters[0] || null;
   const others = characters.filter((character) => character.roleType !== "main").slice(0, 3);
 
   return {
-    mbtiType: String(mbtiType).toUpperCase(),
-    typeProfile: getTypeProfile(String(mbtiType).toUpperCase()),
+    mbtiType: requestedType,
+    baseMbtiType: baseType,
+    typeProfile: getTypeProfile(requestedType),
     main,
     others
   };

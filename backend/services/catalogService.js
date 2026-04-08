@@ -9,6 +9,10 @@ const MODE_ORDER = Object.freeze({
   full: 3
 });
 
+const TYPE_ALIASES = Object.freeze({
+  "ESTJ-T": "ESTJ"
+});
+
 const SCALE_SIDES = Object.freeze({
   EI: ["E", "I"],
   NS: ["N", "S"],
@@ -52,8 +56,15 @@ function canModeUseQuestion(targetMode, questionModeMin) {
   return MODE_ORDER[targetMode] >= MODE_ORDER[questionModeMin];
 }
 
+function normalizeTypeCode(type) {
+  const normalized = String(type || "").toUpperCase();
+  return TYPE_ALIASES[normalized] || normalized;
+}
+
 function getTypeProfile(type) {
-  return MBTI_PROFILES[type] || {
+  const normalized = String(type || "").toUpperCase();
+
+  return MBTI_PROFILES[normalized] || MBTI_PROFILES[normalizeTypeCode(normalized)] || {
     code: type,
     name: type,
     description: "Сбалансированный профиль личности с уникальной смесью логики, энергии и стиля принятия решений."
@@ -64,11 +75,13 @@ module.exports = {
   MODE_ORDER,
   MODE_DETAILS,
   SCALE_SIDES,
+  TYPE_ALIASES,
   MBTI_PROFILES,
   QUESTION_SEED,
   CHARACTER_GROUPS,
   CHARACTER_SEED,
   normalizeMode,
+  normalizeTypeCode,
   canModeUseQuestion,
   getTypeProfile
 };

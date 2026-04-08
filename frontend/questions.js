@@ -8,8 +8,19 @@ window.APP_QUESTION_DATA = (() => {
       subtitle: "24 вопроса",
       duration: "2-3 минуты",
       accent: "blue",
+      accentRgb: "116, 167, 255",
       description: "Короткий и бодрый проход, чтобы быстро почувствовать свой базовый MBTI-профиль и аниме-настроение.",
-      ctaLabel: "Начать быстрый тест"
+      ctaLabel: "Начать быстрый тест",
+      motion: {
+        idleDuration: 5.6,
+        breathDuration: 4.7,
+        driftDuration: 12.4,
+        glowDuration: 7.8,
+        glintDuration: 5.1,
+        phase: -1.4,
+        driftPhase: -2.2,
+        tilt: -7
+      }
     },
     {
       key: "medium",
@@ -17,8 +28,19 @@ window.APP_QUESTION_DATA = (() => {
       subtitle: "40 вопросов",
       duration: "4-6 минут",
       accent: "violet",
+      accentRgb: "152, 113, 255",
       description: "Сбалансированный режим: больше нюансов, устойчивее результат и глубже ощущение собственного характера.",
-      ctaLabel: "Начать стандартный тест"
+      ctaLabel: "Начать стандартный тест",
+      motion: {
+        idleDuration: 6.3,
+        breathDuration: 5.2,
+        driftDuration: 13.8,
+        glowDuration: 8.6,
+        glintDuration: 5.8,
+        phase: -2.1,
+        driftPhase: -3.8,
+        tilt: 2
+      }
     },
     {
       key: "full",
@@ -26,8 +48,19 @@ window.APP_QUESTION_DATA = (() => {
       subtitle: "60 вопросов",
       duration: "8-10 минут",
       accent: "pink",
+      accentRgb: "228, 114, 255",
       description: "Максимальная глубина для тех, кто хочет увидеть себя объёмнее и получить самый точный итоговый портрет.",
-      ctaLabel: "Начать полный тест"
+      ctaLabel: "Начать полный тест",
+      motion: {
+        idleDuration: 5.9,
+        breathDuration: 4.9,
+        driftDuration: 12.9,
+        glowDuration: 8.1,
+        glintDuration: 5.4,
+        phase: -0.8,
+        driftPhase: -1.5,
+        tilt: 8
+      }
     }
   ];
 

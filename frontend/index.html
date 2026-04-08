@@ -31,7 +31,7 @@
     </section>
 
     <section class="screen" id="hub-screen">
-      <div class="app-frame">
+      <div class="app-frame" id="app-frame">
         <header class="app-header">
           <div>
             <p class="eyebrow" id="view-eyebrow">Тест</p>
@@ -42,7 +42,7 @@
 
         <div class="app-views">
           <section class="app-view is-active" id="test-view" data-view="test">
-            <div class="mode-stage">
+            <div class="mode-stage" id="mode-stage" data-ui-state="idle">
               <div class="test-lead">
                 <p class="screen-lead">Один короткий выбор, один чистый фокус и путь к своему результату.</p>
               </div>
@@ -143,6 +143,26 @@
           </section>
         </div>
 
+        <div class="mode-transition-layer hidden" id="mode-transition-layer" aria-hidden="true">
+          <div class="mode-transition-layer__veil"></div>
+          <div class="mode-transition-layer__flash"></div>
+          <div class="mode-transition-layer__ripple"></div>
+          <div class="mode-transition-layer__orb">
+            <span class="mode-transition-layer__orb-core"></span>
+            <span class="mode-transition-layer__orb-swirl"></span>
+            <span class="mode-transition-layer__orb-ring"></span>
+            <span class="mode-transition-layer__orb-glow"></span>
+            <span class="mode-transition-layer__particles">
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+            </span>
+          </div>
+        </div>
+
         <nav class="tabbar" id="tabbar" aria-label="Основная навигация"></nav>
       </div>
     </section>
@@ -198,6 +218,7 @@
         <p class="result-summary" id="result-summary">
           Серверная сводка результата или локальный резервный расчёт.
         </p>
+        <div class="personality-sections hidden" id="result-personality-sections"></div>
 
         <article class="character-feature">
           <img class="character-feature-image" id="main-character-image" alt="Главный персонаж">
@@ -257,7 +278,9 @@
           </p>
         </div>
 
-        <div class="detail-grid">
+        <div class="personality-sections hidden" id="detail-personality-sections"></div>
+
+        <div class="detail-grid" id="detail-legacy-grid">
           <article class="detail-block">
             <h3>Сильные стороны</h3>
             <div class="detail-tags" id="detail-strengths"></div>

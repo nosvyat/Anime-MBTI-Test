@@ -15,10 +15,22 @@
     JP: ["J", "P"]
   };
 
+  const MODE_UI_STATES = Object.freeze({
+    IDLE: "idle",
+    SELECTED: "sphere_selected",
+    TRANSITION: "confirm_transition",
+    STARTED: "test_started"
+  });
+
+  const MODE_CONFIRM_TRANSITION_MS = 1280;
+  const MODE_CONFIRM_SETTLE_MS = 280;
+  const AURA_SELECTION_IMPULSE_MS = 720;
+
   const state = {
     user: null,
     activeView: "test",
     selectedMode: "medium",
+    modeUiState: MODE_UI_STATES.IDLE,
     selectedTypeCode: "INTJ",
     mode: null,
     questions: [],
@@ -31,6 +43,7 @@
 
   const elements = {
     screens: document.querySelectorAll(".screen"),
+    appFrame: document.getElementById("app-frame"),
     welcomeBadge: document.getElementById("welcome-badge"),
     welcomeTitle: document.getElementById("welcome-title"),
     welcomeSubtitle: document.getElementById("welcome-subtitle"),
@@ -40,6 +53,7 @@
     networkStatus: document.getElementById("network-status"),
     tabbar: document.getElementById("tabbar"),
     appViews: document.querySelectorAll(".app-view"),
+    modeStage: document.getElementById("mode-stage"),
     auraRow: document.getElementById("aura-row"),
     modeFocusPanel: document.getElementById("mode-focus-panel"),
     selectedModeName: document.getElementById("selected-mode-name"),
@@ -47,6 +61,7 @@
     selectedModeDescription: document.getElementById("selected-mode-description"),
     selectedModeNote: document.getElementById("selected-mode-note"),
     modeCtaButton: document.getElementById("mode-cta-button"),
+    modeTransitionLayer: document.getElementById("mode-transition-layer"),
     typesGrid: document.getElementById("types-grid"),
     profileAvatar: document.getElementById("profile-avatar"),
     profileName: document.getElementById("profile-name"),
@@ -79,6 +94,7 @@
     resultTypeName: document.getElementById("result-type-name"),
     resultTypeDescription: document.getElementById("result-type-description"),
     resultSummary: document.getElementById("result-summary"),
+    resultPersonalitySections: document.getElementById("result-personality-sections"),
     resultModeBadge: document.getElementById("result-mode-badge"),
     mainCharacterImage: document.getElementById("main-character-image"),
     mainCharacterName: document.getElementById("main-character-name"),
@@ -95,6 +111,8 @@
     detailTypeCode: document.getElementById("detail-type-code"),
     detailTypeName: document.getElementById("detail-type-name"),
     detailTypeDescription: document.getElementById("detail-type-description"),
+    detailPersonalitySections: document.getElementById("detail-personality-sections"),
+    detailLegacyGrid: document.getElementById("detail-legacy-grid"),
     detailStrengths: document.getElementById("detail-strengths"),
     detailWeaknesses: document.getElementById("detail-weaknesses"),
     detailCommunication: document.getElementById("detail-communication"),
@@ -132,6 +150,7 @@
 
     hydrateSelectedMode();
     hydrateSelectedType();
+    resetModeStageState();
     renderApp();
   }
 
@@ -245,7 +264,7 @@
 
   function hydrateSelectedType() {
     const preferredType = state.latestResult?.type || state.selectedTypeCode || "INTJ";
-    state.selectedTypeCode = characterData.typeProfiles[preferredType] ? preferredType : "INTJ";
+    state.selectedTypeCode = hasTypeProfile(preferredType) ? preferredType : "INTJ";
   }
 
   function renderApp() {
@@ -321,6 +340,10 @@
   }
 
   function handleTabClick(event) {
+    if (state.modeUiState === MODE_UI_STATES.TRANSITION) {
+      return;
+    }
+
     const trigger = event.target.closest("[data-view]");
 
     if (!trigger) {
@@ -335,6 +358,7 @@
   function renderTestView() {
     renderAuraModes();
     renderModeFocus();
+    renderModeStageState();
   }
 
   function renderAuraModes() {
@@ -345,16 +369,27 @@
       button.type = "button";
       button.className = `mode-aura mode-aura--${mode.accent}`;
       button.dataset.mode = mode.key;
+      button.dataset.accent = mode.accent;
       button.setAttribute("role", "tab");
       button.setAttribute("aria-selected", String(mode.key === state.selectedMode));
+      applyModeMotion(button, mode);
       button.innerHTML = `
-        <span class="mode-aura__orb" aria-hidden="true"></span>
+        <span class="mode-aura__orb" aria-hidden="true">
+          <span class="mode-aura__orb-core"></span>
+          <span class="mode-aura__orb-swirl"></span>
+          <span class="mode-aura__orb-glint"></span>
+          <span class="mode-aura__orb-ripple"></span>
+        </span>
         <span class="mode-aura__label">${mode.title}</span>
         <span class="mode-aura__detail">${mode.duration}</span>
       `;
 
-      if (mode.key === state.selectedMode) {
+      if (state.modeUiState !== MODE_UI_STATES.IDLE && mode.key === state.selectedMode) {
         button.classList.add("is-selected");
+      }
+
+      if (state.modeUiState === MODE_UI_STATES.SELECTED && mode.key !== state.selectedMode) {
+        button.classList.add("is-dimmed");
       }
 
       elements.auraRow.appendChild(button);
@@ -371,11 +406,14 @@
     elements.selectedModeDescription.textContent = selectedMode.description;
     elements.modeFocusPanel.dataset.accent = selectedMode.accent;
     elements.modeCtaButton.dataset.accent = selectedMode.accent;
+    elements.modeStage.dataset.accent = selectedMode.accent;
+    elements.modeStage.dataset.selectedMode = selectedMode.key;
+    elements.modeCtaButton.disabled = state.modeUiState === MODE_UI_STATES.TRANSITION;
 
     if (hasResumeForSelected) {
       elements.selectedModeNote.textContent = `Есть незавершённая сессия: вопрос ${state.resumeSession.currentQuestionIndex + 1} из ${state.resumeSession.totalQuestions}.`;
       elements.selectedModeNote.classList.remove("hidden");
-      elements.modeCtaButton.textContent = "Продолжить тест";
+      elements.modeCtaButton.textContent = `Продолжить ${selectedMode.title.toLowerCase()} тест`;
       return;
     }
 
@@ -392,25 +430,61 @@
   }
 
   function handleAuraSelection(event) {
+    if (state.modeUiState === MODE_UI_STATES.TRANSITION) {
+      return;
+    }
+
     const trigger = event.target.closest("[data-mode]");
 
     if (!trigger) {
       return;
     }
 
-    state.selectedMode = trigger.dataset.mode;
+    const nextMode = trigger.dataset.mode;
+    state.selectedMode = nextMode;
+    state.modeUiState = MODE_UI_STATES.SELECTED;
     renderTestView();
+    triggerAuraSelectionImpulse(nextMode);
   }
 
   async function handleModeCta() {
-    const selectedMode = getModeDetails();
-
-    if (state.resumeSession?.mode === selectedMode.key) {
-      await resumeSessionFlow();
+    if (state.modeUiState === MODE_UI_STATES.TRANSITION) {
       return;
     }
 
-    await startMode(selectedMode.key);
+    const selectedMode = getModeDetails();
+    const shouldResumeCurrentMode = state.resumeSession?.mode === selectedMode.key;
+    let replaceExisting = false;
+
+    if (state.resumeSession && !shouldResumeCurrentMode) {
+      const shouldReplace = window.confirm("У тебя уже есть незавершённая сессия. Начать новый тест и заменить сохранённый прогресс?");
+
+      if (!shouldReplace) {
+        return;
+      }
+
+      replaceExisting = true;
+    }
+
+    state.modeUiState = MODE_UI_STATES.TRANSITION;
+    renderTestView();
+
+    const preparePromise = shouldResumeCurrentMode
+      ? resumeSessionFlow({ deferScreen: true })
+      : startMode(selectedMode.key, replaceExisting, { deferScreen: true });
+
+    try {
+      await Promise.all([
+        preparePromise,
+        playModeConfirmTransition(selectedMode)
+      ]);
+      await completeModeTransition();
+    } catch (error) {
+      cleanupModeTransition();
+      state.modeUiState = MODE_UI_STATES.SELECTED;
+      renderTestView();
+      throw error;
+    }
   }
 
   function renderTypesView() {
@@ -444,9 +518,18 @@
       return;
     }
 
-    elements.detailTypeCode.textContent = profile.code;
+    const fullProfile = profile.fullProfile || null;
+
+    elements.detailTypeCode.textContent = getProfileDisplayCode(profile, state.selectedTypeCode);
     elements.detailTypeName.textContent = profile.name;
-    elements.detailTypeDescription.textContent = profile.description;
+    elements.detailTypeDescription.textContent = fullProfile?.summary || profile.description;
+    renderPersonalitySections(elements.detailPersonalitySections, fullProfile);
+    elements.detailLegacyGrid.classList.toggle("hidden", Boolean(fullProfile));
+
+    if (fullProfile) {
+      return;
+    }
+
     renderTagGroup(elements.detailStrengths, profile.strengths);
     renderTagGroup(elements.detailWeaknesses, profile.weaknesses);
     elements.detailCommunication.textContent = profile.communication;
@@ -457,12 +540,92 @@
   function renderTagGroup(container, items) {
     container.innerHTML = "";
 
-    items.forEach((item) => {
+    (items || []).forEach((item) => {
       const tag = document.createElement("span");
       tag.className = "detail-tag";
       tag.textContent = item;
       container.appendChild(tag);
     });
+  }
+
+  function renderPersonalitySections(container, fullProfile) {
+    if (!container) {
+      return;
+    }
+
+    container.innerHTML = "";
+    container.classList.toggle("hidden", !fullProfile);
+
+    if (!fullProfile) {
+      return;
+    }
+
+    const introCard = document.createElement("article");
+    introCard.className = "detail-block personality-section personality-section--intro";
+
+    const introEyebrow = document.createElement("p");
+    introEyebrow.className = "eyebrow personality-section__eyebrow";
+    introEyebrow.textContent = "Полный профиль";
+
+    const introTitle = document.createElement("h3");
+    introTitle.className = "personality-section__headline";
+    introTitle.textContent = fullProfile.title;
+
+    const introSummary = document.createElement("p");
+    introSummary.className = "personality-section__lead";
+    introSummary.textContent = fullProfile.summary;
+
+    introCard.append(introEyebrow, introTitle, introSummary);
+    container.appendChild(introCard);
+
+    fullProfile.sections.forEach((section) => {
+      const card = document.createElement("article");
+      card.className = "detail-block personality-section";
+
+      const title = document.createElement("h3");
+      title.textContent = section.title;
+      card.appendChild(title);
+
+      section.blocks.forEach((block) => {
+        if (block.type === "list") {
+          appendPersonalityList(card, block.title, block.items);
+          return;
+        }
+
+        appendPersonalityParagraphs(card, block.items);
+      });
+
+      container.appendChild(card);
+    });
+  }
+
+  function appendPersonalityParagraphs(container, paragraphs) {
+    (paragraphs || []).forEach((paragraph) => {
+      const text = document.createElement("p");
+      text.className = "personality-section__text";
+      text.textContent = paragraph;
+      container.appendChild(text);
+    });
+  }
+
+  function appendPersonalityList(container, title, items) {
+    if (title) {
+      const label = document.createElement("p");
+      label.className = "personality-section__label";
+      label.textContent = title;
+      container.appendChild(label);
+    }
+
+    const list = document.createElement("ul");
+    list.className = "personality-bullet-list";
+
+    (items || []).forEach((item) => {
+      const point = document.createElement("li");
+      point.textContent = item;
+      list.appendChild(point);
+    });
+
+    container.appendChild(list);
   }
 
   function renderProfileView() {
@@ -478,11 +641,13 @@
     if (latestResult) {
       elements.profileLastResultType.textContent = latestResult.type;
       elements.profileLastResultName.textContent = `${latestResult.typeProfile.name} — ${latestResult.mainCharacter?.name || "аниме-архетип"}`;
-      elements.profileLastResultSummary.textContent = latestResult.summaryText;
+      elements.profileLastResultSummary.textContent = currentTypeProfile?.fullProfile?.summary || latestResult.summaryText;
       elements.profileLastResultDate.textContent = `Последний раз: ${formatDate(latestResult.createdAt)}`;
       elements.profileCurrentTypeCode.textContent = latestResult.type;
       elements.profileCurrentTypeName.textContent = latestResult.typeProfile.name;
-      elements.profileCurrentTypeDescription.textContent = currentTypeProfile?.summary || latestResult.typeProfile.description;
+      elements.profileCurrentTypeDescription.textContent = currentTypeProfile?.fullProfile?.summary
+        || currentTypeProfile?.summary
+        || latestResult.typeProfile.description;
     } else {
       elements.profileLastResultType.textContent = "—";
       elements.profileLastResultName.textContent = uiData.emptyStates.latestResult;
@@ -531,9 +696,54 @@
     });
   }
 
+  function applyModeMotion(button, mode) {
+    const motion = mode.motion || {};
+
+    button.style.setProperty("--orb-breathe-duration", `${motion.breathDuration || 4.8}s`);
+    button.style.setProperty("--orb-idle-duration", `${motion.idleDuration || 5.8}s`);
+    button.style.setProperty("--orb-drift-duration", `${motion.driftDuration || 12.4}s`);
+    button.style.setProperty("--orb-glow-duration", `${motion.glowDuration || 8.2}s`);
+    button.style.setProperty("--orb-glint-duration", `${motion.glintDuration || 5.4}s`);
+    button.style.setProperty("--orb-phase", `${motion.phase || 0}s`);
+    button.style.setProperty("--orb-drift-phase", `${motion.driftPhase || 0}s`);
+    button.style.setProperty("--orb-tilt", `${motion.tilt || 0}deg`);
+  }
+
+  function renderModeStageState() {
+    const hasExplicitSelection = state.modeUiState !== MODE_UI_STATES.IDLE;
+
+    elements.modeStage.dataset.uiState = state.modeUiState;
+    elements.modeStage.dataset.selectedMode = state.selectedMode;
+    elements.appFrame.classList.toggle("is-mode-transitioning", state.modeUiState === MODE_UI_STATES.TRANSITION);
+
+    elements.auraRow.querySelectorAll(".mode-aura").forEach((button) => {
+      const isSelected = button.dataset.mode === state.selectedMode;
+      button.classList.toggle("is-selected", hasExplicitSelection && isSelected);
+      button.classList.toggle("is-dimmed", state.modeUiState === MODE_UI_STATES.SELECTED && !isSelected);
+      button.setAttribute("aria-selected", String(hasExplicitSelection && isSelected));
+    });
+  }
+
+  function triggerAuraSelectionImpulse(modeKey) {
+    const button = elements.auraRow.querySelector(`[data-mode="${modeKey}"]`);
+
+    if (!button) {
+      return;
+    }
+
+    button.classList.remove("is-energized");
+    void button.offsetWidth;
+    button.classList.add("is-energized");
+
+    window.setTimeout(() => {
+      button.classList.remove("is-energized");
+    }, AURA_SELECTION_IMPULSE_MS);
+  }
+
   function goToTestHub() {
     state.result = null;
     state.activeView = "test";
+    resetModeStageState();
     state.selectedMode = state.latestResult?.mode || state.resumeSession?.mode || state.selectedMode;
     showScreen("hub-screen");
     renderApp();
@@ -556,15 +766,8 @@
     });
   }
 
-  async function startMode(mode, replaceExisting = false) {
-    if (state.resumeSession && !replaceExisting) {
-      const shouldReplace = window.confirm("У тебя уже есть незавершённая сессия. Начать новый тест и заменить сохранённый прогресс?");
-
-      if (!shouldReplace) {
-        return;
-      }
-    }
-
+  async function startMode(mode, replaceExisting = false, options = {}) {
+    const { deferScreen = false } = options;
     const session = await api.startSession({
       telegramId: state.user.telegramId,
       username: state.user.username,
@@ -581,11 +784,16 @@
     state.resumeSession = state.session;
     state.result = null;
 
-    showScreen("question-screen");
-    renderQuestion();
+    if (!deferScreen) {
+      state.modeUiState = MODE_UI_STATES.STARTED;
+      showScreen("question-screen");
+      renderQuestion();
+    }
   }
 
-  async function resumeSessionFlow() {
+  async function resumeSessionFlow(options = {}) {
+    const { deferScreen = false } = options;
+
     if (!state.resumeSession) {
       return;
     }
@@ -595,8 +803,79 @@
     state.selectedMode = state.resumeSession.mode;
     state.questions = bundle.questions;
     state.session = ensureSessionShape(state.resumeSession, bundle.totalQuestions);
+
+    if (!deferScreen) {
+      state.modeUiState = MODE_UI_STATES.STARTED;
+      showScreen("question-screen");
+      renderQuestion();
+    }
+  }
+
+  async function playModeConfirmTransition(selectedMode) {
+    const button = elements.auraRow.querySelector(`[data-mode="${selectedMode.key}"]`);
+    const orb = button?.querySelector(".mode-aura__orb");
+
+    if (!button || !orb) {
+      return;
+    }
+
+    const orbRect = orb.getBoundingClientRect();
+    const orbCenterX = orbRect.left + orbRect.width / 2;
+    const orbCenterY = orbRect.top + orbRect.height / 2;
+    const shiftX = orbCenterX - window.innerWidth / 2;
+    const shiftY = orbCenterY - window.innerHeight / 2;
+
+    elements.modeTransitionLayer.classList.remove("hidden", "is-settling");
+    elements.modeTransitionLayer.dataset.accent = selectedMode.accent;
+    elements.modeTransitionLayer.style.setProperty("--transition-rgb", selectedMode.accentRgb || "152, 113, 255");
+    elements.modeTransitionLayer.style.setProperty("--transition-size", `${Math.max(orbRect.width, orbRect.height)}px`);
+    elements.modeTransitionLayer.style.setProperty("--transition-shift-x", `${shiftX}px`);
+    elements.modeTransitionLayer.style.setProperty("--transition-shift-y", `${shiftY}px`);
+
+    elements.modeCtaButton.textContent = "Входим в сферу...";
+
+    await nextAnimationFrame();
+    elements.modeTransitionLayer.classList.add("is-active");
+
+    return wait(MODE_CONFIRM_TRANSITION_MS);
+  }
+
+  async function completeModeTransition() {
+    state.modeUiState = MODE_UI_STATES.STARTED;
     showScreen("question-screen");
     renderQuestion();
+
+    elements.modeTransitionLayer.classList.add("is-settling");
+    await wait(MODE_CONFIRM_SETTLE_MS);
+    cleanupModeTransition();
+  }
+
+  function cleanupModeTransition() {
+    elements.modeTransitionLayer.classList.remove("is-active", "is-settling");
+    elements.modeTransitionLayer.classList.add("hidden");
+    elements.modeTransitionLayer.removeAttribute("data-accent");
+    elements.modeTransitionLayer.style.removeProperty("--transition-rgb");
+    elements.modeTransitionLayer.style.removeProperty("--transition-size");
+    elements.modeTransitionLayer.style.removeProperty("--transition-shift-x");
+    elements.modeTransitionLayer.style.removeProperty("--transition-shift-y");
+    elements.appFrame.classList.remove("is-mode-transitioning");
+  }
+
+  function resetModeStageState() {
+    state.modeUiState = MODE_UI_STATES.IDLE;
+    cleanupModeTransition();
+  }
+
+  function wait(duration) {
+    return new Promise((resolve) => {
+      window.setTimeout(resolve, duration);
+    });
+  }
+
+  function nextAnimationFrame() {
+    return new Promise((resolve) => {
+      window.requestAnimationFrame(() => resolve());
+    });
   }
 
   function ensureSessionShape(session, totalQuestions) {
@@ -654,6 +933,7 @@
     if (state.session.currentQuestionIndex === 0) {
       state.resumeSession = state.session;
       state.activeView = "test";
+      resetModeStageState();
       showScreen("hub-screen");
       renderApp();
       return;
@@ -719,7 +999,7 @@
       mode: state.mode,
       createdAt: new Date().toISOString(),
       sessionId: state.session.id,
-      summaryText: `Твой тип — ${type}. ${typeProfile.description}`,
+      summaryText: typeProfile.fullProfile?.summary || `Твой тип — ${type}. ${typeProfile.description}`,
       scales,
       mainCharacter: characterPackage.main || getCharacterGroup(type)?.main || null,
       similarCharacters: characterPackage.others || getCharacterGroup(type)?.others || []
@@ -736,7 +1016,11 @@
       return null;
     }
 
-    const typeProfile = payload.typeProfile || payload.profile || getTypeProfile(type);
+    const localTypeProfile = getTypeProfile(type);
+    const typeProfile = {
+      ...(payload.typeProfile || payload.profile || {}),
+      ...localTypeProfile
+    };
     const characterGroup = getCharacterGroup(type);
     const scales = payload.scales || payload.calculation?.scales || buildScalesFromPercentages(payload.percentages);
 
@@ -746,7 +1030,10 @@
       type,
       typeProfile,
       mode: payload.mode || fallbackMode || payload.session?.mode || "quick",
-      summaryText: payload.summaryText || payload.calculation?.summaryText || `Твой тип — ${type}. ${typeProfile.description}`,
+      summaryText: payload.summaryText
+        || payload.calculation?.summaryText
+        || typeProfile.fullProfile?.summary
+        || `Твой тип — ${type}. ${typeProfile.description}`,
       scales,
       mainCharacter: payload.mainCharacter || characterGroup?.main || null,
       similarCharacters: payload.similarCharacters || payload.others || characterGroup?.others || [],
@@ -825,7 +1112,7 @@
     elements.resultType.textContent = result.type;
     elements.resultTypeName.textContent = result.typeProfile.name;
     elements.resultTypeDescription.textContent = result.typeProfile.description;
-    elements.resultSummary.textContent = result.summaryText;
+    elements.resultSummary.textContent = result.typeProfile.fullProfile?.summary || result.summaryText;
     elements.resultModeBadge.textContent = modeLabel;
     elements.mainCharacterImage.src = mainCharacter.imageUrl;
     elements.mainCharacterImage.alt = mainCharacter.name;
@@ -837,6 +1124,7 @@
     renderTraits(elements.mainCharacterTraits, mainCharacter.traits || []);
     renderSimilarCharacters(result.similarCharacters || []);
     renderScores(result.scales || []);
+    renderPersonalitySections(elements.resultPersonalitySections, result.typeProfile.fullProfile);
   }
 
   function renderTraits(container, traits) {
@@ -939,12 +1227,34 @@
     return questionData.modeOptions.find((mode) => mode.key === modeKey) || questionData.modeOptions[1];
   }
 
+  function resolveTypeCode(typeCode) {
+    if (characterData.normalizeTypeCode) {
+      return characterData.normalizeTypeCode(typeCode);
+    }
+
+    return String(typeCode || "").toUpperCase();
+  }
+
+  function hasTypeProfile(typeCode) {
+    return Boolean(characterData.typeProfiles[resolveTypeCode(typeCode)]);
+  }
+
   function getTypeProfile(typeCode) {
-    return characterData.typeProfiles[typeCode] || characterData.typeProfiles.INTJ;
+    return characterData.typeProfiles[resolveTypeCode(typeCode)] || characterData.typeProfiles.INTJ;
   }
 
   function getCharacterGroup(typeCode) {
-    return characterData.groups[typeCode] || null;
+    return characterData.groups[resolveTypeCode(typeCode)] || null;
+  }
+
+  function getProfileDisplayCode(profile, requestedTypeCode) {
+    const normalizedRequestedType = String(requestedTypeCode || "").toUpperCase();
+
+    if (normalizedRequestedType.includes("-")) {
+      return normalizedRequestedType;
+    }
+
+    return profile.fullProfile?.code || profile.code;
   }
 
   function getUserDisplayName() {
