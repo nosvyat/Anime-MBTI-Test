@@ -1,45 +1,46 @@
 const fs = require("node:fs");
 const path = require("node:path");
-const { database, get } = require("./database");
+const { dialect, exec, get, run } = require("./database");
 const { QUESTION_SEED, CHARACTER_SEED } = require("../services/catalogService");
 
-const schemaPath = path.join(__dirname, "..", "schema.sql");
+const sqliteSchemaPath = path.join(__dirname, "..", "schema.sql");
+const postgresSchemaPath = path.join(__dirname, "..", "schema.postgres.sql");
 
-function tableCount(tableName) {
-  const row = get(`SELECT COUNT(*) AS count FROM ${tableName}`);
-  return row ? row.count : 0;
+function getSchemaPath() {
+  return dialect === "postgres" ? postgresSchemaPath : sqliteSchemaPath;
 }
 
-function seedQuestions() {
-  if (tableCount("questions") > 0) {
+async function tableCount(tableName) {
+  const row = await get(`SELECT COUNT(*) AS count FROM ${tableName}`);
+  return row ? Number(row.count || 0) : 0;
+}
+
+async function seedQuestions() {
+  if (await tableCount("questions")) {
     return;
   }
 
-  const insert = database.prepare(`
-    INSERT INTO questions (text, scale_type, direct_side, mode_min, active, created_at, updated_at)
-    VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-  `);
-
-  QUESTION_SEED.forEach((question) => {
-    insert.run(question.text, question.scaleType, question.directSide, question.modeMin);
-  });
+  for (const question of QUESTION_SEED) {
+    await run(`
+      INSERT INTO questions (text, scale_type, direct_side, mode_min, active, created_at, updated_at)
+      VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `, [question.text, question.scaleType, question.directSide, question.modeMin]);
+  }
 }
 
-function seedCharacters() {
-  if (tableCount("characters") > 0) {
+async function seedCharacters() {
+  if (await tableCount("characters")) {
     return;
   }
 
-  const insert = database.prepare(`
-    INSERT INTO characters (
-      code, name, anime, mbti_type, role_type, icon_url, image_url,
-      description, traits_json, priority, created_at, updated_at
-    )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-  `);
-
-  CHARACTER_SEED.forEach((character) => {
-    insert.run(
+  for (const character of CHARACTER_SEED) {
+    await run(`
+      INSERT INTO characters (
+        code, name, anime, mbti_type, role_type, icon_url, image_url,
+        description, traits_json, priority, created_at, updated_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `, [
       character.code,
       character.name,
       character.anime,
@@ -50,15 +51,15 @@ function seedCharacters() {
       character.description,
       JSON.stringify(character.traits),
       character.priority
-    );
-  });
+    ]);
+  }
 }
 
-function initializeDatabase() {
-  const schemaSql = fs.readFileSync(schemaPath, "utf8");
-  database.exec(schemaSql);
-  seedQuestions();
-  seedCharacters();
+async function initializeDatabase() {
+  const schemaSql = fs.readFileSync(getSchemaPath(), "utf8");
+  await exec(schemaSql);
+  await seedQuestions();
+  await seedCharacters();
 }
 
 module.exports = {

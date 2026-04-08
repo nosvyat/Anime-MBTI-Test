@@ -1,6 +1,10 @@
 const { get } = require("../db/database");
 const { HttpError } = require("../controllers/http");
 
+function serializeDate(value) {
+  return value instanceof Date ? value.toISOString() : value;
+}
+
 function mapUser(row) {
   if (!row) {
     return null;
@@ -12,12 +16,12 @@ function mapUser(row) {
     username: row.username,
     firstName: row.first_name,
     lastName: row.last_name,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at
+    createdAt: serializeDate(row.created_at),
+    updatedAt: serializeDate(row.updated_at)
   };
 }
 
-function upsertUser(payload) {
+async function upsertUser(payload) {
   const telegramId = String(payload.telegramId || "").trim();
   const firstName = String(payload.firstName || "Local Tester").trim();
   const username = payload.username ? String(payload.username).trim() : null;
@@ -27,7 +31,7 @@ function upsertUser(payload) {
     throw new HttpError(400, "telegramId is required");
   }
 
-  const row = get(`
+  const row = await get(`
     INSERT INTO users (telegram_id, username, first_name, last_name, created_at, updated_at)
     VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     ON CONFLICT(telegram_id) DO UPDATE SET
@@ -41,12 +45,12 @@ function upsertUser(payload) {
   return mapUser(row);
 }
 
-function getUserByTelegramId(telegramId) {
-  return mapUser(get("SELECT * FROM users WHERE telegram_id = ?", [String(telegramId)]));
+async function getUserByTelegramId(telegramId) {
+  return mapUser(await get("SELECT * FROM users WHERE telegram_id = ?", [String(telegramId)]));
 }
 
-function ensureUserByTelegram(payload) {
-  const existing = getUserByTelegramId(payload.telegramId);
+async function ensureUserByTelegram(payload) {
+  const existing = await getUserByTelegramId(payload.telegramId);
   if (existing) {
     return upsertUser({
       telegramId: payload.telegramId,

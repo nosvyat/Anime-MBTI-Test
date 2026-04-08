@@ -1,9 +1,9 @@
 const { getCharacterPackageByType } = require("../services/charactersService");
 const { sendError } = require("./http");
 
-function getByType(req, res) {
+async function getByType(req, res) {
   try {
-    res.json(getCharacterPackageByType(req.params.mbtiType));
+    res.json(await getCharacterPackageByType(req.params.mbtiType));
   } catch (error) {
     sendError(res, error);
   }

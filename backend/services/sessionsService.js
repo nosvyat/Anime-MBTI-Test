@@ -8,11 +8,15 @@ const { calculateMbtiResult } = require("./mbtiService");
 const { createResult } = require("./resultsService");
 
 function parseAnswers(jsonValue, totalQuestions) {
-  const parsed = JSON.parse(jsonValue || "[]");
+  const parsed = Array.isArray(jsonValue) ? jsonValue : JSON.parse(jsonValue || "[]");
   return Array.from({ length: totalQuestions }, (_, index) => {
     const value = parsed[index];
     return typeof value === "number" ? value : null;
   });
+}
+
+function serializeDate(value) {
+  return value instanceof Date ? value.toISOString() : value;
 }
 
 function mapSession(row) {
@@ -28,13 +32,13 @@ function mapSession(row) {
     currentQuestionIndex: row.current_question_index,
     totalQuestions: row.total_questions,
     answers: parseAnswers(row.answers_json, row.total_questions),
-    startedAt: row.started_at,
-    updatedAt: row.updated_at,
-    completedAt: row.completed_at
+    startedAt: serializeDate(row.started_at),
+    updatedAt: serializeDate(row.updated_at),
+    completedAt: serializeDate(row.completed_at)
   };
 }
 
-function getSessionRowById(id) {
+async function getSessionRowById(id) {
   return get("SELECT * FROM test_sessions WHERE id = ?", [Number(id)]);
 }
 
@@ -48,8 +52,8 @@ function assertInProgressSession(sessionRow) {
   }
 }
 
-function getActiveSessionByTelegramId(telegramId) {
-  const row = get(`
+async function getActiveSessionByTelegramId(telegramId) {
+  const row = await get(`
     SELECT ts.*
     FROM test_sessions ts
     INNER JOIN users u ON u.id = ts.user_id
@@ -61,20 +65,20 @@ function getActiveSessionByTelegramId(telegramId) {
   return mapSession(row);
 }
 
-function startSession(payload) {
+async function startSession(payload) {
   const mode = normalizeMode(payload.mode);
-  const user = ensureUserByTelegram({
+  const user = await ensureUserByTelegram({
     telegramId: payload.telegramId,
     username: payload.username,
     firstName: payload.firstName,
     lastName: payload.lastName
   });
-  const questionBundle = getQuestionBundle(mode);
+  const questionBundle = await getQuestionBundle(mode);
 
-  return withTransaction(() => {
-    run("DELETE FROM test_sessions WHERE user_id = ? AND status = 'in_progress'", [user.id]);
+  return withTransaction(async () => {
+    await run("DELETE FROM test_sessions WHERE user_id = ? AND status = 'in_progress'", [user.id]);
 
-    const row = get(`
+    const row = await get(`
       INSERT INTO test_sessions (
         user_id, mode, status, current_question_index, total_questions, answers_json,
         started_at, updated_at
@@ -92,8 +96,8 @@ function startSession(payload) {
   });
 }
 
-function saveAnswer(sessionId, questionIndex, value) {
-  const sessionRow = getSessionRowById(sessionId);
+async function saveAnswer(sessionId, questionIndex, value) {
+  const sessionRow = await getSessionRowById(sessionId);
   assertInProgressSession(sessionRow);
 
   const numericValue = Number(value);
@@ -108,7 +112,7 @@ function saveAnswer(sessionId, questionIndex, value) {
   const answers = parseAnswers(sessionRow.answers_json, sessionRow.total_questions);
   answers[questionIndex] = numericValue;
 
-  const updated = get(`
+  const updated = await get(`
     UPDATE test_sessions
     SET answers_json = ?, updated_at = CURRENT_TIMESTAMP
     WHERE id = ?
@@ -118,8 +122,8 @@ function saveAnswer(sessionId, questionIndex, value) {
   return mapSession(updated);
 }
 
-function updateProgress(sessionId, payload) {
-  const sessionRow = getSessionRowById(sessionId);
+async function updateProgress(sessionId, payload) {
+  const sessionRow = await getSessionRowById(sessionId);
   assertInProgressSession(sessionRow);
 
   const answers = Array.isArray(payload.answers)
@@ -134,7 +138,7 @@ function updateProgress(sessionId, payload) {
     Math.min(Number(payload.currentQuestionIndex ?? sessionRow.current_question_index), sessionRow.total_questions - 1)
   );
 
-  const updated = get(`
+  const updated = await get(`
     UPDATE test_sessions
     SET current_question_index = ?, answers_json = ?, updated_at = CURRENT_TIMESTAMP
     WHERE id = ?
@@ -144,12 +148,12 @@ function updateProgress(sessionId, payload) {
   return mapSession(updated);
 }
 
-function completeSession(sessionId) {
-  const sessionRow = getSessionRowById(sessionId);
+async function completeSession(sessionId) {
+  const sessionRow = await getSessionRowById(sessionId);
   assertInProgressSession(sessionRow);
 
   const session = mapSession(sessionRow);
-  const bundle = getQuestionBundle(session.mode);
+  const bundle = await getQuestionBundle(session.mode);
   const unansweredIndex = session.answers.findIndex((answer) => typeof answer !== "number");
 
   if (unansweredIndex !== -1) {
@@ -159,10 +163,10 @@ function completeSession(sessionId) {
   }
 
   const calculation = calculateMbtiResult(bundle.questions, session.answers);
-  const characterPackage = getCharacterPackageByType(calculation.type);
+  const characterPackage = await getCharacterPackageByType(calculation.type);
 
-  return withTransaction(() => {
-    const updatedSession = get(`
+  return withTransaction(async () => {
+    const updatedSession = await get(`
       UPDATE test_sessions
       SET status = 'completed',
           current_question_index = ?,
@@ -172,7 +176,7 @@ function completeSession(sessionId) {
       RETURNING *
     `, [session.totalQuestions - 1, Number(sessionId)]);
 
-    const result = createResult({
+    const result = await createResult({
       userId: session.userId,
       sessionId: session.id,
       mode: session.mode,

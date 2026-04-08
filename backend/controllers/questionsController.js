@@ -1,9 +1,9 @@
 const { getQuestionBundle } = require("../services/questionsService");
 const { sendError } = require("./http");
 
-function getByMode(req, res) {
+async function getByMode(req, res) {
   try {
-    res.json(getQuestionBundle(req.params.mode));
+    res.json(await getQuestionBundle(req.params.mode));
   } catch (error) {
     sendError(res, error);
   }

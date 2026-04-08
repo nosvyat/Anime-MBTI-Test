@@ -1,6 +1,10 @@
 const { all } = require("../db/database");
 const { MODE_DETAILS, normalizeMode, canModeUseQuestion } = require("./catalogService");
 
+function serializeDate(value) {
+  return value instanceof Date ? value.toISOString() : value;
+}
+
 function mapQuestion(row) {
   return {
     id: row.id,
@@ -9,23 +13,25 @@ function mapQuestion(row) {
     directSide: row.direct_side,
     modeMin: row.mode_min,
     active: Boolean(row.active),
-    createdAt: row.created_at,
-    updatedAt: row.updated_at
+    createdAt: serializeDate(row.created_at),
+    updatedAt: serializeDate(row.updated_at)
   };
 }
 
-function getAllQuestions() {
-  return all("SELECT * FROM questions WHERE active = 1 ORDER BY id ASC").map(mapQuestion);
+async function getAllQuestions() {
+  const rows = await all("SELECT * FROM questions WHERE active = 1 ORDER BY id ASC");
+  return rows.map(mapQuestion);
 }
 
-function getQuestionsByMode(mode) {
+async function getQuestionsByMode(mode) {
   const normalizedMode = normalizeMode(mode);
-  return getAllQuestions().filter((question) => canModeUseQuestion(normalizedMode, question.modeMin));
+  const questions = await getAllQuestions();
+  return questions.filter((question) => canModeUseQuestion(normalizedMode, question.modeMin));
 }
 
-function getQuestionBundle(mode) {
+async function getQuestionBundle(mode) {
   const normalizedMode = normalizeMode(mode);
-  const questions = getQuestionsByMode(normalizedMode);
+  const questions = await getQuestionsByMode(normalizedMode);
 
   return {
     mode: normalizedMode,

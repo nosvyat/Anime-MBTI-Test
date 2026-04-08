@@ -2,6 +2,22 @@ const { get, all } = require("../db/database");
 const { getCharacterById } = require("./charactersService");
 const { getTypeProfile } = require("./catalogService");
 
+function parseJsonArray(value) {
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  try {
+    return JSON.parse(value || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function serializeDate(value) {
+  return value instanceof Date ? value.toISOString() : value;
+}
+
 function mapResultRow(row) {
   if (!row) {
     return null;
@@ -19,28 +35,33 @@ function mapResultRow(row) {
       JP: row.jp_percent
     },
     mainCharacterId: row.main_character_id,
-    similarCharacterIds: JSON.parse(row.similar_characters_json || "[]"),
+    similarCharacterIds: parseJsonArray(row.similar_characters_json),
     summaryText: row.summary_text,
-    createdAt: row.created_at
+    createdAt: serializeDate(row.created_at)
   };
 }
 
-function enrichResult(result, mode = null) {
+async function enrichResult(result, mode = null) {
   if (!result) {
     return null;
   }
+
+  const [mainCharacter, similarCharacters] = await Promise.all([
+    result.mainCharacterId ? getCharacterById(result.mainCharacterId) : Promise.resolve(null),
+    Promise.all(result.similarCharacterIds.map((id) => getCharacterById(id)))
+  ]);
 
   return {
     ...result,
     mode,
     typeProfile: getTypeProfile(result.mbtiType),
-    mainCharacter: result.mainCharacterId ? getCharacterById(result.mainCharacterId) : null,
-    similarCharacters: result.similarCharacterIds.map((id) => getCharacterById(id)).filter(Boolean)
+    mainCharacter,
+    similarCharacters: similarCharacters.filter(Boolean)
   };
 }
 
-function createResult({ userId, sessionId, mode, calculation, characterPackage }) {
-  const row = get(`
+async function createResult({ userId, sessionId, mode, calculation, characterPackage }) {
+  const row = await get(`
     INSERT INTO test_results (
       user_id, session_id, mbti_type, ei_percent, ns_percent, tf_percent, jp_percent,
       main_character_id, similar_characters_json, summary_text, created_at
@@ -63,8 +84,8 @@ function createResult({ userId, sessionId, mode, calculation, characterPackage }
   return enrichResult(mapResultRow(row), mode);
 }
 
-function getLatestResultByTelegramId(telegramId) {
-  const row = get(`
+async function getLatestResultByTelegramId(telegramId) {
+  const row = await get(`
     SELECT tr.*, ts.mode
     FROM test_results tr
     INNER JOIN users u ON u.id = tr.user_id
@@ -77,8 +98,8 @@ function getLatestResultByTelegramId(telegramId) {
   return row ? enrichResult(mapResultRow(row), row.mode) : null;
 }
 
-function getHistoryByTelegramId(telegramId) {
-  const rows = all(`
+async function getHistoryByTelegramId(telegramId) {
+  const rows = await all(`
     SELECT tr.*, ts.mode
     FROM test_results tr
     INNER JOIN users u ON u.id = tr.user_id
@@ -87,7 +108,7 @@ function getHistoryByTelegramId(telegramId) {
     ORDER BY tr.created_at DESC, tr.id DESC
   `, [String(telegramId)]);
 
-  return rows.map((row) => enrichResult(mapResultRow(row), row.mode));
+  return Promise.all(rows.map((row) => enrichResult(mapResultRow(row), row.mode)));
 }
 
 module.exports = {

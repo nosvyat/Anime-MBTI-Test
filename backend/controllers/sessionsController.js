@@ -7,54 +7,54 @@ const {
 } = require("../services/sessionsService");
 const { HttpError, sendError } = require("./http");
 
-function getActiveSession(req, res) {
+async function getActiveSession(req, res) {
   try {
-    const session = getActiveSessionByTelegramId(req.params.telegramId);
+    const session = await getActiveSessionByTelegramId(req.params.telegramId);
     res.json({ session });
   } catch (error) {
     sendError(res, error);
   }
 }
 
-function postStartSession(req, res) {
+async function postStartSession(req, res) {
   try {
-    const session = startSession(req.body || {});
+    const session = await startSession(req.body || {});
     res.status(201).json({ session });
   } catch (error) {
     sendError(res, error);
   }
 }
 
-function postAnswer(req, res) {
+async function postAnswer(req, res) {
   try {
     const sessionId = Number(req.params.id);
     const questionIndex = Number(req.body?.questionIndex);
     const value = Number(req.body?.value);
-    const session = saveAnswer(sessionId, questionIndex, value);
+    const session = await saveAnswer(sessionId, questionIndex, value);
     res.json({ session });
   } catch (error) {
     sendError(res, error);
   }
 }
 
-function postProgress(req, res) {
+async function postProgress(req, res) {
   try {
     const sessionId = Number(req.params.id);
     if (!sessionId) {
       throw new HttpError(400, "Valid session id is required");
     }
 
-    const session = updateProgress(sessionId, req.body || {});
+    const session = await updateProgress(sessionId, req.body || {});
     res.json({ session });
   } catch (error) {
     sendError(res, error);
   }
 }
 
-function postComplete(req, res) {
+async function postComplete(req, res) {
   try {
     const sessionId = Number(req.params.id);
-    res.json(completeSession(sessionId));
+    res.json(await completeSession(sessionId));
   } catch (error) {
     sendError(res, error);
   }

@@ -1,56 +1,163 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const { AsyncLocalStorage } = require("node:async_hooks");
 const { DatabaseSync } = require("node:sqlite");
 
-const dbPath = process.env.DB_PATH || path.join(__dirname, "anime-mbti.sqlite");
+const hasDatabaseUrl = Boolean(process.env.DATABASE_URL);
+const dialect = hasDatabaseUrl ? "postgres" : "sqlite";
+const transactionScope = new AsyncLocalStorage();
 
-fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+let sqliteDatabase = null;
+let pgPool = null;
+let sqlitePath = null;
 
-const database = new DatabaseSync(dbPath);
-database.exec("PRAGMA foreign_keys = ON;");
+if (dialect === "sqlite") {
+  sqlitePath = process.env.DB_PATH || path.join(__dirname, "anime-mbti.sqlite");
+  fs.mkdirSync(path.dirname(sqlitePath), { recursive: true });
+  sqliteDatabase = new DatabaseSync(sqlitePath);
+  sqliteDatabase.exec("PRAGMA foreign_keys = ON;");
+} else {
+  const { Pool } = require("pg");
+  const sslMode = String(process.env.PGSSL || process.env.DATABASE_SSL || "").toLowerCase();
+
+  pgPool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    max: Number(process.env.PG_POOL_MAX || 10),
+    ssl: sslMode === "true" || sslMode === "require"
+      ? { rejectUnauthorized: false }
+      : undefined
+  });
+}
 
 function normalizeParams(params) {
   if (params === undefined) {
     return [];
   }
 
-  if (Array.isArray(params)) {
-    return params;
+  return Array.isArray(params) ? params : [params];
+}
+
+function translateSql(sql) {
+  if (dialect !== "postgres") {
+    return sql;
   }
 
-  return [params];
+  let index = 0;
+  return sql.replace(/\?/g, () => {
+    index += 1;
+    return `$${index}`;
+  });
 }
 
-function run(sql, params) {
-  return database.prepare(sql).run(...normalizeParams(params));
+function splitSqlStatements(sql) {
+  return sql
+    .split(/;\s*(?:\r?\n|$)/)
+    .map((statement) => statement.trim())
+    .filter(Boolean);
 }
 
-function get(sql, params) {
-  return database.prepare(sql).get(...normalizeParams(params));
+function getPgExecutor() {
+  return transactionScope.getStore() || pgPool;
 }
 
-function all(sql, params) {
-  return database.prepare(sql).all(...normalizeParams(params));
+async function exec(sql) {
+  if (dialect === "sqlite") {
+    sqliteDatabase.exec(sql);
+    return;
+  }
+
+  const executor = getPgExecutor();
+  const statements = splitSqlStatements(sql);
+
+  for (const statement of statements) {
+    await executor.query(statement);
+  }
 }
 
-function withTransaction(work) {
-  database.exec("BEGIN");
+async function run(sql, params) {
+  const normalizedParams = normalizeParams(params);
+
+  if (dialect === "sqlite") {
+    return sqliteDatabase.prepare(sql).run(...normalizedParams);
+  }
+
+  const result = await getPgExecutor().query(translateSql(sql), normalizedParams);
+  return {
+    changes: result.rowCount,
+    rowCount: result.rowCount,
+    rows: result.rows
+  };
+}
+
+async function get(sql, params) {
+  const normalizedParams = normalizeParams(params);
+
+  if (dialect === "sqlite") {
+    return sqliteDatabase.prepare(sql).get(...normalizedParams) || null;
+  }
+
+  const result = await getPgExecutor().query(translateSql(sql), normalizedParams);
+  return result.rows[0] || null;
+}
+
+async function all(sql, params) {
+  const normalizedParams = normalizeParams(params);
+
+  if (dialect === "sqlite") {
+    return sqliteDatabase.prepare(sql).all(...normalizedParams);
+  }
+
+  const result = await getPgExecutor().query(translateSql(sql), normalizedParams);
+  return result.rows;
+}
+
+async function withTransaction(work) {
+  if (dialect === "sqlite") {
+    sqliteDatabase.exec("BEGIN");
+
+    try {
+      const result = await work();
+      sqliteDatabase.exec("COMMIT");
+      return result;
+    } catch (error) {
+      sqliteDatabase.exec("ROLLBACK");
+      throw error;
+    }
+  }
+
+  const client = await pgPool.connect();
 
   try {
-    const result = work();
-    database.exec("COMMIT");
+    await client.query("BEGIN");
+    const result = await transactionScope.run(client, async () => work());
+    await client.query("COMMIT");
     return result;
   } catch (error) {
-    database.exec("ROLLBACK");
+    await client.query("ROLLBACK");
     throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function closeDatabase() {
+  if (sqliteDatabase) {
+    sqliteDatabase.close();
+    return;
+  }
+
+  if (pgPool) {
+    await pgPool.end();
   }
 }
 
 module.exports = {
-  database,
-  dbPath,
+  dialect,
+  dbPath: sqlitePath,
+  exec,
   run,
   get,
   all,
-  withTransaction
+  withTransaction,
+  closeDatabase
 };
