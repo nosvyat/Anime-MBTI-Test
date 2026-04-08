@@ -22,17 +22,14 @@
     STARTED: "test_started"
   });
 
-  const MODE_QUALITY_LEVELS = Object.freeze({
-    HIGH: "high",
-    MEDIUM: "medium",
-    LOW: "low"
-  });
+  const MODE_CONFIRM_TRANSITION_MS = 1280;
+  const MODE_CONFIRM_SETTLE_MS = 280;
+  const AURA_SELECTION_IMPULSE_MS = 720;
 
   const state = {
     user: null,
     activeView: "test",
     selectedMode: "medium",
-    modeQuality: MODE_QUALITY_LEVELS.HIGH,
     modeUiState: MODE_UI_STATES.IDLE,
     selectedTypeCode: "INTJ",
     mode: null,
@@ -129,7 +126,6 @@
 
   async function initializeApp() {
     applyWelcomeCopy();
-    applyModePerformanceProfile();
     renderTabbar();
     setNetworkStatus();
 
@@ -275,19 +271,10 @@
     renderHeader();
     renderTabbar();
     renderAppViews();
-    renderSyncChip();
-
-    if (state.activeView === "test") {
-      renderTestView();
-      return;
-    }
-
-    if (state.activeView === "types") {
-      renderTypesView();
-      return;
-    }
-
+    renderTestView();
+    renderTypesView();
     renderProfileView();
+    renderSyncChip();
   }
 
   function renderHeader() {
@@ -454,11 +441,6 @@
     }
 
     const nextMode = trigger.dataset.mode;
-
-    if (nextMode === state.selectedMode && state.modeUiState === MODE_UI_STATES.SELECTED) {
-      return;
-    }
-
     state.selectedMode = nextMode;
     state.modeUiState = MODE_UI_STATES.SELECTED;
     renderTestView();
@@ -715,26 +697,23 @@
   }
 
   function applyModeMotion(button, mode) {
-    const config = getModeAnimationConfig();
     const motion = mode.motion || {};
 
-    button.style.setProperty("--orb-breathe-duration", `${(motion.breathDuration || 4.8) * config.idleDurationMultiplier}s`);
-    button.style.setProperty("--orb-idle-duration", `${(motion.idleDuration || 5.8) * config.idleDurationMultiplier}s`);
-    button.style.setProperty("--orb-drift-duration", `${(motion.driftDuration || 12.4) * config.idleDurationMultiplier}s`);
-    button.style.setProperty("--orb-glow-duration", `${(motion.glowDuration || 8.2) * config.idleDurationMultiplier}s`);
-    button.style.setProperty("--orb-glint-duration", `${(motion.glintDuration || 5.4) * config.idleDurationMultiplier}s`);
+    button.style.setProperty("--orb-breathe-duration", `${motion.breathDuration || 4.8}s`);
+    button.style.setProperty("--orb-idle-duration", `${motion.idleDuration || 5.8}s`);
+    button.style.setProperty("--orb-drift-duration", `${motion.driftDuration || 12.4}s`);
+    button.style.setProperty("--orb-glow-duration", `${motion.glowDuration || 8.2}s`);
+    button.style.setProperty("--orb-glint-duration", `${motion.glintDuration || 5.4}s`);
     button.style.setProperty("--orb-phase", `${motion.phase || 0}s`);
     button.style.setProperty("--orb-drift-phase", `${motion.driftPhase || 0}s`);
-    button.style.setProperty("--orb-tilt", `${config.enableTilt ? motion.tilt || 0 : 0}deg`);
+    button.style.setProperty("--orb-tilt", `${motion.tilt || 0}deg`);
   }
 
   function renderModeStageState() {
     const hasExplicitSelection = state.modeUiState !== MODE_UI_STATES.IDLE;
 
     elements.modeStage.dataset.uiState = state.modeUiState;
-    elements.modeStage.dataset.quality = state.modeQuality;
     elements.modeStage.dataset.selectedMode = state.selectedMode;
-    elements.modeTransitionLayer.dataset.quality = state.modeQuality;
     elements.appFrame.classList.toggle("is-mode-transitioning", state.modeUiState === MODE_UI_STATES.TRANSITION);
 
     elements.auraRow.querySelectorAll(".mode-aura").forEach((button) => {
@@ -746,7 +725,6 @@
   }
 
   function triggerAuraSelectionImpulse(modeKey) {
-    const config = getModeAnimationConfig();
     const button = elements.auraRow.querySelector(`[data-mode="${modeKey}"]`);
 
     if (!button) {
@@ -759,7 +737,7 @@
 
     window.setTimeout(() => {
       button.classList.remove("is-energized");
-    }, config.selectionImpulseMs);
+    }, AURA_SELECTION_IMPULSE_MS);
   }
 
   function goToTestHub() {
@@ -834,7 +812,6 @@
   }
 
   async function playModeConfirmTransition(selectedMode) {
-    const config = getModeAnimationConfig();
     const button = elements.auraRow.querySelector(`[data-mode="${selectedMode.key}"]`);
     const orb = button?.querySelector(".mode-aura__orb");
 
@@ -850,7 +827,6 @@
 
     elements.modeTransitionLayer.classList.remove("hidden", "is-settling");
     elements.modeTransitionLayer.dataset.accent = selectedMode.accent;
-    elements.modeTransitionLayer.dataset.quality = state.modeQuality;
     elements.modeTransitionLayer.style.setProperty("--transition-rgb", selectedMode.accentRgb || "152, 113, 255");
     elements.modeTransitionLayer.style.setProperty("--transition-size", `${Math.max(orbRect.width, orbRect.height)}px`);
     elements.modeTransitionLayer.style.setProperty("--transition-shift-x", `${shiftX}px`);
@@ -861,17 +837,16 @@
     await nextAnimationFrame();
     elements.modeTransitionLayer.classList.add("is-active");
 
-    return wait(config.confirmDurationMs);
+    return wait(MODE_CONFIRM_TRANSITION_MS);
   }
 
   async function completeModeTransition() {
-    const config = getModeAnimationConfig();
     state.modeUiState = MODE_UI_STATES.STARTED;
     showScreen("question-screen");
     renderQuestion();
 
     elements.modeTransitionLayer.classList.add("is-settling");
-    await wait(config.settleDurationMs);
+    await wait(MODE_CONFIRM_SETTLE_MS);
     cleanupModeTransition();
   }
 
@@ -889,59 +864,6 @@
   function resetModeStageState() {
     state.modeUiState = MODE_UI_STATES.IDLE;
     cleanupModeTransition();
-  }
-
-  function applyModePerformanceProfile() {
-    const profile = detectModePerformanceProfile();
-    state.modeQuality = profile.quality;
-    document.documentElement.dataset.modeQuality = profile.quality;
-  }
-
-  function detectModePerformanceProfile() {
-    const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
-    const coarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches ?? false;
-    const narrowViewport = window.matchMedia?.("(max-width: 640px)")?.matches ?? false;
-    const deviceMemory = Number(window.navigator.deviceMemory || 4);
-    const hardwareConcurrency = Number(window.navigator.hardwareConcurrency || 4);
-
-    if (prefersReducedMotion || deviceMemory <= 2 || hardwareConcurrency <= 4) {
-      return { quality: MODE_QUALITY_LEVELS.LOW };
-    }
-
-    if (coarsePointer || narrowViewport || deviceMemory <= 4 || hardwareConcurrency <= 6) {
-      return { quality: MODE_QUALITY_LEVELS.MEDIUM };
-    }
-
-    return { quality: MODE_QUALITY_LEVELS.HIGH };
-  }
-
-  function getModeAnimationConfig() {
-    switch (state.modeQuality) {
-      case MODE_QUALITY_LEVELS.LOW:
-        return {
-          confirmDurationMs: 920,
-          settleDurationMs: 140,
-          selectionImpulseMs: 420,
-          idleDurationMultiplier: 1.22,
-          enableTilt: false
-        };
-      case MODE_QUALITY_LEVELS.MEDIUM:
-        return {
-          confirmDurationMs: 1080,
-          settleDurationMs: 200,
-          selectionImpulseMs: 560,
-          idleDurationMultiplier: 1.12,
-          enableTilt: true
-        };
-      default:
-        return {
-          confirmDurationMs: 1280,
-          settleDurationMs: 280,
-          selectionImpulseMs: 720,
-          idleDurationMultiplier: 1,
-          enableTilt: true
-        };
-    }
   }
 
   function wait(duration) {
