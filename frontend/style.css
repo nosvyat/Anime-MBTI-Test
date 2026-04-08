@@ -450,13 +450,28 @@ h1 {
   background:
     radial-gradient(circle at 50% 18%, rgba(var(--selected-aura-rgb), 0.24), transparent 44%),
     radial-gradient(circle at 50% 62%, rgba(var(--selected-aura-rgb), 0.12), transparent 68%);
-  filter: blur(26px);
-  opacity: 0.72;
+  filter: blur(18px);
+  opacity: 0.54;
   transform: translateY(0) scale(1);
-  animation: stage-halo 11.2s ease-in-out infinite;
   transition: opacity 420ms ease, transform 520ms ease;
   pointer-events: none;
   z-index: -1;
+}
+
+.mode-stage[data-quality="high"]::before {
+  filter: blur(24px);
+  opacity: 0.68;
+  animation: stage-halo 11.2s ease-in-out infinite;
+}
+
+.mode-stage[data-quality="medium"]::before {
+  filter: blur(12px);
+  opacity: 0.42;
+}
+
+.mode-stage[data-quality="low"]::before {
+  filter: none;
+  opacity: 0.26;
 }
 
 .app-header,
@@ -491,10 +506,20 @@ h1 {
   height: 56px;
   border-radius: 999px;
   background: radial-gradient(circle at 50% 50%, rgba(var(--selected-aura-rgb), 0.14), rgba(var(--selected-aura-rgb), 0.04) 52%, transparent 78%);
-  filter: blur(22px);
-  opacity: 0.82;
+  filter: blur(14px);
+  opacity: 0.58;
   pointer-events: none;
   transition: opacity 420ms ease, transform 520ms ease;
+}
+
+.mode-stage[data-quality="medium"] .aura-row::before {
+  filter: blur(10px);
+  opacity: 0.42;
+}
+
+.mode-stage[data-quality="low"] .aura-row::before {
+  filter: none;
+  opacity: 0.22;
 }
 
 .mode-aura {
@@ -520,9 +545,8 @@ h1 {
   transform: translate3d(0, 0, 0) scale(1);
   transition:
     transform 480ms cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 360ms ease,
-    filter 420ms ease;
-  will-change: transform, opacity, filter;
+    opacity 360ms ease;
+  contain: layout paint;
 }
 
 .mode-aura:focus-visible {
@@ -557,14 +581,12 @@ h1 {
   transition:
     border-color var(--transition-fast),
     box-shadow 420ms ease,
-    filter 420ms ease;
+    transform 420ms ease;
   transform: translateY(0) scale(1) rotateX(var(--orb-tilt));
   transform-style: preserve-3d;
   backface-visibility: hidden;
-  will-change: transform, box-shadow, filter;
-  animation:
-    aura-orb-breathe var(--orb-breathe-duration) ease-in-out infinite var(--orb-phase),
-    aura-glow-breath var(--orb-glow-duration) ease-in-out infinite var(--orb-phase);
+  contain: paint;
+  animation: aura-orb-breathe var(--orb-breathe-duration) ease-in-out infinite var(--orb-phase);
 }
 
 .mode-aura__orb::before,
@@ -590,9 +612,8 @@ h1 {
   width: 166%;
   height: 166%;
   background: radial-gradient(circle, rgba(var(--aura-rgb), 0.34), rgba(var(--aura-rgb), 0.16) 42%, transparent 72%);
-  filter: blur(24px);
-  opacity: 0.68;
-  animation: aura-halo-float var(--orb-idle-duration) ease-in-out infinite var(--orb-phase);
+  filter: blur(18px);
+  opacity: 0.54;
 }
 
 .mode-aura__orb-core,
@@ -612,24 +633,77 @@ h1 {
   mix-blend-mode: screen;
   opacity: 0.94;
   filter: blur(1px);
-  animation: aura-core-drift var(--orb-drift-duration) ease-in-out infinite var(--orb-drift-phase);
 }
 
 .mode-aura__orb-swirl {
   inset: 7%;
   background: conic-gradient(from 150deg, transparent 0deg, rgba(255, 255, 255, 0.08) 58deg, rgba(var(--aura-rgb), 0.48) 156deg, rgba(255, 255, 255, 0.18) 246deg, transparent 332deg);
   mix-blend-mode: screen;
-  filter: blur(11px);
-  opacity: 0.44;
-  animation: aura-swirl var(--orb-drift-duration) linear infinite var(--orb-drift-phase);
+  filter: blur(8px);
+  opacity: 0.28;
 }
 
 .mode-aura__orb-glint {
   inset: -16%;
   background: linear-gradient(112deg, transparent 26%, rgba(255, 255, 255, 0.06) 38%, rgba(255, 255, 255, 0.64) 50%, rgba(255, 255, 255, 0.12) 60%, transparent 74%);
-  opacity: 0.62;
+  opacity: 0.36;
   transform: translateX(-125%) rotate(12deg);
+}
+
+.mode-stage[data-quality="high"] .mode-aura__orb::after {
+  filter: blur(22px);
+  opacity: 0.66;
+  animation: aura-halo-float var(--orb-idle-duration) ease-in-out infinite var(--orb-phase);
+}
+
+.mode-stage[data-quality="high"] .mode-aura__orb-core {
+  animation: aura-core-drift var(--orb-drift-duration) ease-in-out infinite var(--orb-drift-phase);
+}
+
+.mode-stage[data-quality="high"] .mode-aura__orb-swirl {
+  filter: blur(11px);
+  opacity: 0.44;
+  animation: aura-swirl var(--orb-drift-duration) linear infinite var(--orb-drift-phase);
+}
+
+.mode-stage[data-quality="high"] .mode-aura__orb-glint {
+  opacity: 0.62;
   animation: aura-glint-sweep var(--orb-glint-duration) ease-in-out infinite var(--orb-phase);
+}
+
+.mode-stage[data-quality="medium"] .mode-aura__orb {
+  box-shadow:
+    inset 0 0 22px rgba(255, 255, 255, 0.12),
+    inset 0 -14px 22px rgba(7, 10, 20, 0.28),
+    0 0 28px rgba(var(--aura-rgb), 0.26),
+    0 0 56px rgba(var(--aura-rgb), 0.14);
+}
+
+.mode-stage[data-quality="medium"] .mode-aura__orb::after {
+  filter: blur(12px);
+  opacity: 0.38;
+}
+
+.mode-stage[data-quality="medium"] .mode-aura__orb-swirl {
+  display: none;
+}
+
+.mode-stage[data-quality="medium"] .mode-aura__orb-glint {
+  opacity: 0.22;
+}
+
+.mode-stage[data-quality="low"] .mode-aura__orb {
+  box-shadow:
+    inset 0 0 18px rgba(255, 255, 255, 0.1),
+    inset 0 -12px 18px rgba(7, 10, 20, 0.24),
+    0 0 20px rgba(var(--aura-rgb), 0.18);
+}
+
+.mode-stage[data-quality="low"] .mode-aura__orb::after,
+.mode-stage[data-quality="low"] .mode-aura__orb-core,
+.mode-stage[data-quality="low"] .mode-aura__orb-swirl,
+.mode-stage[data-quality="low"] .mode-aura__orb-glint {
+  display: none;
 }
 
 .mode-aura__orb-ripple {
@@ -669,7 +743,6 @@ h1 {
 
 .mode-stage[data-ui-state="idle"] .mode-aura {
   opacity: 0.96;
-  filter: saturate(1.02);
 }
 
 .mode-stage[data-ui-state="idle"] .mode-aura:hover {
@@ -678,7 +751,6 @@ h1 {
 
 .mode-stage[data-ui-state="sphere_selected"] .mode-aura {
   opacity: 0.5;
-  filter: saturate(0.72) blur(0.6px);
   transform: translateY(10px) scale(0.9);
 }
 
@@ -698,9 +770,31 @@ h1 {
     inset 0 -20px 32px rgba(7, 10, 20, 0.38),
     0 0 58px rgba(var(--aura-rgb), 0.48),
     0 0 138px rgba(var(--aura-rgb), 0.3);
+  animation: aura-orb-breathe var(--orb-breathe-duration) ease-in-out infinite var(--orb-phase);
+}
+
+.mode-stage[data-quality="high"][data-ui-state="sphere_selected"] .mode-aura.is-selected .mode-aura__orb,
+.mode-stage[data-quality="high"][data-ui-state="confirm_transition"] .mode-aura.is-selected .mode-aura__orb {
   animation:
     aura-orb-breathe var(--orb-breathe-duration) ease-in-out infinite var(--orb-phase),
     aura-glow-strong var(--orb-glow-duration) ease-in-out infinite var(--orb-phase);
+}
+
+.mode-stage[data-quality="medium"][data-ui-state="sphere_selected"] .mode-aura.is-selected .mode-aura__orb,
+.mode-stage[data-quality="medium"][data-ui-state="confirm_transition"] .mode-aura.is-selected .mode-aura__orb {
+  box-shadow:
+    inset 0 0 28px rgba(255, 255, 255, 0.14),
+    inset 0 -16px 26px rgba(7, 10, 20, 0.32),
+    0 0 44px rgba(var(--aura-rgb), 0.34),
+    0 0 90px rgba(var(--aura-rgb), 0.18);
+}
+
+.mode-stage[data-quality="low"][data-ui-state="sphere_selected"] .mode-aura.is-selected .mode-aura__orb,
+.mode-stage[data-quality="low"][data-ui-state="confirm_transition"] .mode-aura.is-selected .mode-aura__orb {
+  box-shadow:
+    inset 0 0 22px rgba(255, 255, 255, 0.12),
+    inset 0 -12px 18px rgba(7, 10, 20, 0.28),
+    0 0 30px rgba(var(--aura-rgb), 0.24);
 }
 
 .mode-stage[data-ui-state="sphere_selected"] .mode-aura.is-selected .mode-aura__orb::before,
@@ -810,7 +904,7 @@ h1 {
   margin: 0 auto;
   position: relative;
   overflow: hidden;
-  will-change: transform, opacity, filter;
+  will-change: auto;
 }
 
 .mode-cta::before {
@@ -850,7 +944,6 @@ h1 {
 
 .mode-stage[data-ui-state="confirm_transition"] .mode-aura:not(.is-selected) {
   opacity: 0;
-  filter: blur(12px) saturate(0.42);
   transform: translateY(24px) scale(0.76);
 }
 
@@ -867,14 +960,12 @@ h1 {
 .mode-stage[data-ui-state="confirm_transition"] .mode-cta {
   opacity: 0;
   transform: translateY(20px) scale(0.96);
-  filter: blur(18px);
 }
 
 .app-frame.is-mode-transitioning .app-header,
 .app-frame.is-mode-transitioning .tabbar {
   opacity: 0;
   transform: translateY(-12px);
-  filter: blur(18px);
   pointer-events: none;
 }
 
@@ -916,8 +1007,6 @@ h1 {
   background:
     radial-gradient(circle at 50% 42%, rgba(var(--transition-rgb), 0.22), transparent 36%),
     linear-gradient(180deg, rgba(3, 6, 12, 0) 0%, rgba(3, 6, 12, 0.74) 46%, rgba(2, 4, 10, 0.96) 100%);
-  backdrop-filter: blur(0);
-  -webkit-backdrop-filter: blur(0);
   opacity: 0;
 }
 
@@ -934,9 +1023,7 @@ h1 {
   aspect-ratio: 1;
   border-radius: 50%;
   border: 1px solid rgba(var(--transition-rgb), 0.5);
-  box-shadow:
-    0 0 42px rgba(var(--transition-rgb), 0.24),
-    inset 0 0 24px rgba(255, 255, 255, 0.16);
+  box-shadow: 0 0 28px rgba(var(--transition-rgb), 0.18);
   opacity: 0;
   transform: translate(-50%, -50%) scale(0.12);
 }
@@ -948,7 +1035,7 @@ h1 {
   aspect-ratio: 1;
   border-radius: 50%;
   transform: translate(calc(-50% + var(--transition-shift-x)), calc(-50% + var(--transition-shift-y))) scale(1);
-  will-change: transform, opacity, filter;
+  contain: layout paint;
 }
 
 .mode-transition-layer__orb-core,
@@ -976,9 +1063,9 @@ h1 {
 .mode-transition-layer__orb-swirl {
   inset: 10%;
   background: conic-gradient(from 160deg, transparent 0deg, rgba(255, 255, 255, 0.14) 52deg, rgba(var(--transition-rgb), 0.74) 160deg, rgba(255, 255, 255, 0.22) 244deg, transparent 332deg);
-  filter: blur(14px);
+  filter: blur(10px);
   mix-blend-mode: screen;
-  opacity: 0.56;
+  opacity: 0.42;
 }
 
 .mode-transition-layer__orb-ring {
@@ -991,8 +1078,8 @@ h1 {
 .mode-transition-layer__orb-glow {
   inset: -34%;
   background: radial-gradient(circle, rgba(var(--transition-rgb), 0.56) 0%, rgba(var(--transition-rgb), 0.16) 40%, transparent 70%);
-  filter: blur(38px);
-  opacity: 0.78;
+  filter: blur(24px);
+  opacity: 0.64;
 }
 
 .mode-transition-layer__particles {
@@ -1083,6 +1170,37 @@ h1 {
 .mode-transition-layer.is-active .mode-transition-layer__particles span {
   animation: mode-enter-particle 900ms cubic-bezier(0.18, 0.86, 0.24, 1) forwards;
   animation-delay: var(--particle-delay);
+}
+
+.mode-transition-layer[data-quality="medium"] .mode-transition-layer__orb-swirl,
+.mode-transition-layer[data-quality="medium"] .mode-transition-layer__particles {
+  display: none;
+}
+
+.mode-transition-layer[data-quality="medium"] .mode-transition-layer__flash {
+  opacity: 0.88;
+}
+
+.mode-transition-layer[data-quality="medium"] .mode-transition-layer__orb-glow {
+  filter: blur(18px);
+  opacity: 0.48;
+}
+
+.mode-transition-layer[data-quality="low"] .mode-transition-layer__flash,
+.mode-transition-layer[data-quality="low"] .mode-transition-layer__orb-swirl,
+.mode-transition-layer[data-quality="low"] .mode-transition-layer__orb-ring,
+.mode-transition-layer[data-quality="low"] .mode-transition-layer__orb-glow,
+.mode-transition-layer[data-quality="low"] .mode-transition-layer__particles {
+  display: none;
+}
+
+.mode-transition-layer[data-quality="low"] .mode-transition-layer__veil {
+  background: linear-gradient(180deg, rgba(3, 6, 12, 0) 0%, rgba(3, 6, 12, 0.68) 44%, rgba(2, 4, 10, 0.94) 100%);
+}
+
+.mode-transition-layer[data-quality="low"] .mode-transition-layer__ripple {
+  width: 18vmax;
+  box-shadow: none;
 }
 
 .types-grid,
@@ -1238,6 +1356,17 @@ h1 {
   box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.18);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
+}
+
+html[data-mode-quality="medium"] .tabbar {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+html[data-mode-quality="low"] .tabbar {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: rgba(7, 11, 22, 0.92);
 }
 
 .tabbar-button {
@@ -1759,20 +1888,14 @@ h1 {
 @keyframes mode-enter-veil {
   0% {
     opacity: 0;
-    backdrop-filter: blur(0);
-    -webkit-backdrop-filter: blur(0);
   }
 
   28% {
-    opacity: 0.84;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    opacity: 0.78;
   }
 
   100% {
     opacity: 1;
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
   }
 }
 
@@ -1908,6 +2031,26 @@ h1 {
   .mode-aura__detail,
   .tabbar-label {
     font-size: 0.72rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mode-stage::before,
+  .mode-aura__orb,
+  .mode-aura__orb::after,
+  .mode-aura__orb-core,
+  .mode-aura__orb-swirl,
+  .mode-aura__orb-glint,
+  .mode-aura__orb-ripple,
+  .mode-transition-layer__veil,
+  .mode-transition-layer__flash,
+  .mode-transition-layer__ripple,
+  .mode-transition-layer__orb,
+  .mode-transition-layer__orb-swirl,
+  .mode-transition-layer__orb-ring,
+  .mode-transition-layer__orb-glow,
+  .mode-transition-layer__particles span {
+    animation: none !important;
   }
 }
 
