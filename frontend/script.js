@@ -63,6 +63,11 @@
     modeCtaButton: document.getElementById("mode-cta-button"),
     modeTransitionLayer: document.getElementById("mode-transition-layer"),
     typesGrid: document.getElementById("types-grid"),
+    premiumBadge: document.getElementById("premium-badge"),
+    premiumTitle: document.getElementById("premium-title"),
+    premiumDescription: document.getElementById("premium-description"),
+    premiumGrid: document.getElementById("premium-grid"),
+    premiumNote: document.getElementById("premium-note"),
     profileAvatar: document.getElementById("profile-avatar"),
     profileName: document.getElementById("profile-name"),
     profileUsername: document.getElementById("profile-username"),
@@ -273,6 +278,7 @@
     renderAppViews();
     renderTestView();
     renderTypesView();
+    renderPremiumView();
     renderProfileView();
     renderSyncChip();
   }
@@ -291,14 +297,21 @@
       button.type = "button";
       button.className = "tabbar-button";
       button.dataset.view = tab.key;
+      button.dataset.accentRgb = tab.accentRgb;
+      button.style.setProperty("--tab-accent-rgb", tab.accentRgb || "140, 163, 255");
       button.setAttribute("aria-label", tab.label);
       button.innerHTML = `
-        <span class="tabbar-icon" aria-hidden="true">${renderTabIcon(tab.icon)}</span>
-        <span class="tabbar-label">${tab.label}</span>
+        <span class="tabbar-button__inner">
+          <span class="tabbar-icon-shell" aria-hidden="true">
+            <span class="tabbar-icon">${renderTabIcon(tab.icon)}</span>
+          </span>
+          <span class="tabbar-label">${tab.label}</span>
+        </span>
       `;
 
       if (tab.key === state.activeView) {
         button.classList.add("is-active");
+        button.setAttribute("aria-current", "page");
       }
 
       elements.tabbar.appendChild(button);
@@ -306,29 +319,51 @@
   }
 
   function renderTabIcon(icon) {
-    if (icon === "spark") {
+    if (icon === "tests") {
       return `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 3l1.6 4.1L18 8.7l-4.4 1.6L12 14.5l-1.6-4.2L6 8.7l4.4-1.6L12 3z"></path>
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 3L13.7 8.3L19 10L13.7 11.7L12 17L10.3 11.7L5 10L10.3 8.3L12 3Z"
+            stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+          <path d="M18.5 4.5L18.9 5.6L20 6L18.9 6.4L18.5 7.5L18.1 6.4L17 6L18.1 5.6L18.5 4.5Z"
+            fill="currentColor"/>
+          <path d="M5.5 15.5L5.85 16.35L6.7 16.7L5.85 17.05L5.5 17.9L5.15 17.05L4.3 16.7L5.15 16.35L5.5 15.5Z"
+            fill="currentColor" opacity="0.8"/>
         </svg>
       `;
     }
 
-    if (icon === "grid") {
+    if (icon === "psychotypes") {
       return `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="4" y="4" width="6" height="6" rx="1.5"></rect>
-          <rect x="14" y="4" width="6" height="6" rx="1.5"></rect>
-          <rect x="4" y="14" width="6" height="6" rx="1.5"></rect>
-          <rect x="14" y="14" width="6" height="6" rx="1.5"></rect>
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 4L19 8L12 12L5 8L12 4Z"
+            stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+          <path d="M6.5 11L12 14L17.5 11"
+            stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M8 14L12 16.5L16 14"
+            stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.75"/>
+        </svg>
+      `;
+    }
+
+    if (icon === "premium") {
+      return `
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <rect x="5" y="10" width="14" height="10" rx="2.5"
+            stroke="currentColor" stroke-width="1.8"/>
+          <path d="M8 10V7.5C8 5.6 9.6 4 12 4C14.4 4 16 5.6 16 7.5V10"
+            stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          <path d="M18.5 5.5L18.8 6.3L19.6 6.6L18.8 6.9L18.5 7.7L18.2 6.9L17.4 6.6L18.2 6.3L18.5 5.5Z"
+            fill="currentColor"/>
         </svg>
       `;
     }
 
     return `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M20 21a8 8 0 10-16 0"></path>
-        <circle cx="12" cy="8" r="4"></circle>
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="12" cy="8" r="3.5"
+          stroke="currentColor" stroke-width="1.8"/>
+        <path d="M5 19C5 15.7 7.7 13 11 13H13C16.3 13 19 15.7 19 19"
+          stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
       </svg>
     `;
   }
@@ -347,6 +382,10 @@
     const trigger = event.target.closest("[data-view]");
 
     if (!trigger) {
+      return;
+    }
+
+    if (trigger.dataset.view === state.activeView) {
       return;
     }
 
@@ -502,6 +541,32 @@
       `;
       button.addEventListener("click", () => openTypeDetail(profile.code));
       elements.typesGrid.appendChild(button);
+    });
+  }
+
+  function renderPremiumView() {
+    if (!elements.premiumGrid) {
+      return;
+    }
+
+    const premiumData = uiData.premium;
+
+    elements.premiumBadge.textContent = premiumData.badge;
+    elements.premiumTitle.textContent = premiumData.title;
+    elements.premiumDescription.textContent = premiumData.description;
+    elements.premiumNote.textContent = premiumData.note;
+    elements.premiumGrid.innerHTML = "";
+
+    premiumData.cards.forEach((item, index) => {
+      const card = document.createElement("article");
+      card.className = "premium-card";
+      card.style.setProperty("--premium-delay", `${index * 60}ms`);
+      card.innerHTML = `
+        <span class="premium-card__index">0${index + 1}</span>
+        <h3>${item.title}</h3>
+        <p>${item.text}</p>
+      `;
+      elements.premiumGrid.appendChild(card);
     });
   }
 
