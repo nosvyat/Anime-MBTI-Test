@@ -194,8 +194,8 @@
     <section class="screen" id="question-screen">
       <div class="glass-card question-card">
         <div class="question-topbar">
-          <button class="ghost-button" id="back-button" type="button">Назад</button>
-          <div class="sync-chip" id="sync-chip">Прогресс сохранён</div>
+          <button class="ghost-button question-later-button" id="pause-test-button" type="button">Продолжить позже</button>
+          <div class="sync-chip" id="sync-chip">Облако: сохранено</div>
         </div>
 
         <div class="question-meta">
@@ -221,7 +221,10 @@
         <div class="answer-scale" id="answer-scale" role="radiogroup" aria-label="Шкала ответа"></div>
         <p class="answer-hint" id="answer-hint">Выбери один вариант, чтобы продолжить.</p>
 
-        <button class="primary-button" id="next-button" type="button" disabled>Далее</button>
+        <div class="question-actions">
+          <button class="ghost-button question-nav-button" id="prev-button" type="button" disabled>Назад</button>
+          <button class="primary-button question-nav-button" id="next-button" type="button" disabled>Далее</button>
+        </div>
       </div>
     </section>
 

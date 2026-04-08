@@ -85,7 +85,7 @@
     profileAboutTitle: document.getElementById("profile-about-title"),
     profileAboutText: document.getElementById("profile-about-text"),
     profileRestartButton: document.getElementById("profile-restart-button"),
-    backButton: document.getElementById("back-button"),
+    pauseTestButton: document.getElementById("pause-test-button"),
     syncChip: document.getElementById("sync-chip"),
     modeBadge: document.getElementById("mode-badge"),
     questionCounter: document.getElementById("question-counter"),
@@ -94,6 +94,7 @@
     questionText: document.getElementById("question-text"),
     answerScale: document.getElementById("answer-scale"),
     answerHint: document.getElementById("answer-hint"),
+    prevButton: document.getElementById("prev-button"),
     nextButton: document.getElementById("next-button"),
     resultType: document.getElementById("result-type"),
     resultTypeName: document.getElementById("result-type-name"),
@@ -130,6 +131,7 @@
   initializeApp();
 
   async function initializeApp() {
+    setupOrientationGuard();
     applyWelcomeCopy();
     renderTabbar();
     setNetworkStatus();
@@ -194,8 +196,42 @@
     };
   }
 
+  function setupOrientationGuard() {
+    updateOrientationState();
+    attemptPortraitLock();
+
+    window.addEventListener("orientationchange", handleOrientationGuard, { passive: true });
+    window.addEventListener("resize", handleOrientationGuard, { passive: true });
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        handleOrientationGuard();
+      }
+    });
+  }
+
+  function handleOrientationGuard() {
+    updateOrientationState();
+    attemptPortraitLock();
+  }
+
+  function updateOrientationState() {
+    const isLandscape = window.innerWidth > window.innerHeight;
+    document.documentElement.classList.toggle("is-landscape-app", isLandscape);
+  }
+
+  async function attemptPortraitLock() {
+    try {
+      if (window.screen?.orientation?.lock) {
+        await window.screen.orientation.lock("portrait-primary");
+      }
+    } catch (_error) {
+      // Best-effort only: some mobile browsers and webviews do not allow orientation lock.
+    }
+  }
+
   function bindEvents() {
     elements.welcomeCtaButton.addEventListener("click", () => {
+      attemptPortraitLock();
       state.activeView = "test";
       showScreen("hub-screen");
       renderApp();
@@ -205,7 +241,8 @@
     elements.auraRow.addEventListener("click", handleAuraSelection);
     elements.modeCtaButton.addEventListener("click", handleModeCta);
     elements.profileRestartButton.addEventListener("click", goToTestHub);
-    elements.backButton.addEventListener("click", handleBack);
+    elements.pauseTestButton.addEventListener("click", handlePauseTest);
+    elements.prevButton.addEventListener("click", handlePreviousQuestion);
     elements.nextButton.addEventListener("click", handleNext);
     elements.shareButton.addEventListener("click", handleShare);
     elements.resultProfileButton.addEventListener("click", () => {
@@ -990,17 +1027,20 @@
     renderSyncChip();
   }
 
-  async function handleBack() {
+  function handlePauseTest() {
     if (!state.session) {
       return;
     }
 
-    if (state.session.currentQuestionIndex === 0) {
-      state.resumeSession = state.session;
-      state.activeView = "test";
-      resetModeStageState();
-      showScreen("hub-screen");
-      renderApp();
+    state.resumeSession = state.session;
+    state.activeView = "test";
+    resetModeStageState();
+    showScreen("hub-screen");
+    renderApp();
+  }
+
+  async function handlePreviousQuestion() {
+    if (!state.session || state.session.currentQuestionIndex === 0) {
       return;
     }
 
@@ -1145,6 +1185,7 @@
     elements.answerHint.textContent = typeof answer === "number"
       ? questionData.answerOptions.find((option) => option.value === answer)?.label || "Ответ сохранён"
       : "Выбери один вариант, чтобы продолжить.";
+    elements.prevButton.disabled = index === 0;
     elements.nextButton.textContent = index === state.questions.length - 1 ? "Показать результат" : "Далее";
     elements.nextButton.disabled = typeof answer !== "number";
     syncAnswerButtons(answer);
@@ -1278,14 +1319,21 @@
     }
 
     if (!state.session && !state.resumeSession) {
-      elements.syncChip.textContent = navigator.onLine ? "Онлайн режим" : "Оффлайн режим";
+      elements.syncChip.dataset.state = navigator.onLine ? "saved" : "offline";
+      elements.syncChip.innerHTML = buildSyncChipMarkup(
+        navigator.onLine ? "Облако" : "Локально",
+        navigator.onLine ? "saved" : "offline"
+      );
       return;
     }
 
     const session = state.session || state.resumeSession;
-    elements.syncChip.textContent = session?.synced === false
-      ? "Оффлайн: ждём синхронизацию"
-      : "Прогресс сохранён";
+    const syncState = session?.synced === false ? "syncing" : "saved";
+    elements.syncChip.dataset.state = syncState;
+    elements.syncChip.innerHTML = buildSyncChipMarkup(
+      syncState === "saved" ? "Облако" : "Синхр.",
+      syncState
+    );
   }
 
   function getModeDetails(modeKey = state.selectedMode) {
@@ -1350,7 +1398,32 @@
   }
 
   function setNetworkStatus() {
-    elements.networkStatus.textContent = navigator.onLine ? "Онлайн" : "Оффлайн";
+    const status = navigator.onLine ? "online" : "offline";
+    elements.networkStatus.dataset.state = status;
+    elements.networkStatus.innerHTML = `
+      <span class="status-inline">
+        <span class="status-inline__dot" aria-hidden="true"></span>
+        <span>${status === "online" ? "Онлайн" : "Оффлайн"}</span>
+      </span>
+    `;
+  }
+
+  function buildSyncChipMarkup(label, state) {
+    const indicatorClass = state === "syncing"
+      ? "status-inline__spinner"
+      : "status-inline__dot";
+
+    return `
+      <span class="status-inline status-inline--cloud">
+        <span class="status-inline__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M7.5 18.5H16.2C18.85 18.5 21 16.4 21 13.8C21 11.45 19.23 9.5 16.95 9.15C16.35 6.25 13.78 4.1 10.75 4.1C7.45 4.1 4.78 6.66 4.58 9.88C2.5 10.45 1 12.32 1 14.55C1 16.72 2.78 18.5 4.95 18.5H7.5Z" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <span>${label}</span>
+        <span class="${indicatorClass}" aria-hidden="true"></span>
+      </span>
+    `;
   }
 
   function showScreen(screenId) {
